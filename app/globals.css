@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:      #f7f7f6;
+  --surface: #ffffff;
+  --text:    #21201e;
+  --muted:   #6b6a67;
+  --border:  #e4e3e0;
+  --brand-ink: #98012E;   /* maroon text on the light surface */
+}
+
+.dark {
+  --bg:      #191817;
+  --surface: #23221f;
+  --text:    #f2f1ef;
+  --muted:   #a3a19d;
+  --border:  #343230;
+  /* Spec section 1.1 assigns maroon to brand text. On the dark surface #98012E
+     measures ~2.5:1, under the 4.5:1 text floor, so dark mode steps to the spec's
+     own accent token. Fills and rules stay #98012E in both modes. */
+  --brand-ink: #C4123F;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Calibri, "Segoe UI", system-ui, Arial, sans-serif;
+}
+
+/* Sticky table headers everywhere; no alternating row banding (AEG rule). */
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+/* Spec section 6.11 — the reference implementation has no global focus ring.
+   New builds must add one, in maroon. */
+:focus-visible {
+  outline: none;
+  border-color: #98012E;
+  box-shadow: 0 0 0 2px rgba(152, 1, 46, 0.2);
+  border-radius: 6px;
+}
+
+/* Login artwork motion */
+@keyframes aeg-dash-crawl { to { stroke-dashoffset: -256; } }
+@keyframes aeg-ring-pulse {
+  0%   { r: 6;  opacity: .5; }
+  100% { r: 26; opacity: 0; }
+}
+.aeg-lane { animation: aeg-dash-crawl 13s linear infinite; }
+.aeg-lane-2 { animation-duration: 11s; }
+.aeg-lane-3 { animation-duration: 9s;  }
+.aeg-lane-4 { animation-duration: 12s; }
+.aeg-ring { animation: aeg-ring-pulse 4s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aeg-lane, .aeg-ring { animation: none; }
+  .aeg-ship { display: none; }
+  * { transition-duration: 0.01ms !important; }
+}
