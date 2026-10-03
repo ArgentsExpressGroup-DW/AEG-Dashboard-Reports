@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Contare — Argents WMS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0f172a;--panel:#1e293b;--panel2:#273449;--line:#334155;--txt:#e2e8f0;--muted:#94a3b8;
+  --brand:#2563eb;--ok:#16a34a;--okbg:#052e16;--warn:#d97706;--warnbg:#3a2708;--bad:#dc2626;--badbg:#3b0d0d;--accent:#38bdf8;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:16px}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+header h1{font-size:16px;margin:0;font-weight:700}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.badge.ok{color:#bbf7d0;background:var(--okbg);border-color:#166534}
+.badge.warn{color:#fde68a;background:var(--warnbg);border-color:#92400e}
+.spacer{flex:1}
+.tabs{display:flex;gap:6px}
+.tab{padding:8px 14px;border-radius:8px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);cursor:pointer;font-weight:600;font-size:14px}
+.tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+main{max-width:1100px;margin:0 auto;padding:14px}
+.hidden{display:none!important}
+.btn{background:var(--brand);color:#fff;border:none;border-radius:10px;padding:14px 18px;font-size:16px;font-weight:700;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.lg{padding:20px;font-size:20px;width:100%}
+.btn.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+.btn.ok{background:var(--ok)}.btn.warn{background:var(--warn)}.btn.bad{background:var(--bad)}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:8px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+label.fld{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+input.scan{width:100%;padding:16px;font-size:22px;border-radius:10px;border:2px solid var(--brand);background:#0b1220;color:#fff;font-weight:700;letter-spacing:.5px}
+input.t,select.t{width:100%;padding:12px;font-size:16px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:#fff}
+input.scan::placeholder{color:#475569;font-weight:400}
+.step-title{font-size:13px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.q{font-size:22px;font-weight:800;margin:2px 0 14px}
+.yn{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.crumbs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.crumb{font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;color:var(--muted)}
+.crumb b{color:var(--txt)}
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.kv span:first-child{color:var(--muted)}
+.hint{font-size:13px;color:var(--muted);margin-top:8px}
+.flash{padding:10px 14px;border-radius:10px;font-weight:600;margin-bottom:12px;font-size:14px}
+.flash.ok{background:var(--okbg);color:#bbf7d0;border:1px solid #166534}
+.flash.warn{background:var(--warnbg);color:#fde68a;border:1px solid #92400e}
+.flash.bad{background:var(--badbg);color:#fecaca;border:1px solid #7f1d1d}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;background:var(--panel)}
+td.mono,th.mono{font-family:ui-monospace,Menlo,monospace}
+.tbl-wrap{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
+.tile-row{margin-bottom:6px}
+.tile-row .rt{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin:0 0 6px 2px}
+.tile-row .tiles{grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:8px}
+.tile-row.r2 .tiles{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:900px){.tile-row .tiles,.tile-row.r2 .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tile .s{font-size:11px;color:var(--muted);margin-top:4px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.tile .n{font-size:26px;font-weight:800}
+.tile .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.tile.ok .n{color:#4ade80}.tile.warn .n{color:#fbbf24}.tile.bad .n{color:#f87171}.tile.info .n{color:var(--accent)}
+.pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
+.pill.match{background:var(--okbg);color:#bbf7d0}.pill.variance{background:var(--warnbg);color:#fde68a}
+.pill.uncounted{background:var(--badbg);color:#fecaca}.pill.unexpected{background:#1e1b4b;color:#c7d2fe}
+.pill.open{background:#0c4a6e;color:#bae6fd}.pill.counting{background:var(--warnbg);color:#fde68a}.pill.closed{background:var(--panel2);color:var(--muted)}
+.pill.review{background:#0c4a6e;color:#bae6fd}.pill.verified{background:var(--okbg);color:#bbf7d0}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:440px;width:100%}
+.modal-msg{font-size:15px;line-height:1.5;margin-bottom:18px}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end}
+.small{font-size:12px;color:var(--muted)}
+.del{color:#f87171;cursor:pointer;font-weight:700}
+.counter{font-size:52px;font-weight:800;text-align:center;letter-spacing:2px}
+.prog{height:10px;background:#0b1220;border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+.prog>div{height:100%;background:var(--brand);width:0%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.q{font-size:19px}.counter{font-size:42px}.grid2{grid-template-columns:1fr}}
+.footer-note{font-size:11px;color:#475569;text-align:center;padding:20px 0}
+
+/* ---- Contare theme + branding (overrides above) ---- */
+:root{--inbg:#0e0f12;--bg:#141518;--panel:#1d1f24;--panel2:#282b31;--line:#3a3d45;--txt:#e8eaed;--muted:#9aa0a8;--brand:#8b1a3c;--brand2:#6f142f;--accent:#d06e8a}
+[data-theme="light"]{--inbg:#ffffff;--bg:#f4f5f7;--panel:#ffffff;--panel2:#eef0f3;--line:#d9dde3;--txt:#1b1d21;--muted:#5f6670;--brand:#8b1a3c;--brand2:#6f142f;--accent:#8b1a3c}
+body{transition:background .2s,color .2s}
+input.scan,input.t,select.t{background:var(--inbg);color:var(--txt)}
+.prog{background:var(--inbg)}
+input.t::placeholder,input.scan::placeholder{color:var(--muted);opacity:.7}
+input.scan{border-color:var(--brand)}
+.mono{font-family:ui-monospace,Menlo,monospace}
+.btn{background:var(--brand)}.btn.ghost{background:var(--panel2)}
+.tab.active{background:var(--brand);border-color:var(--brand)}
+.flash.ok{background:rgba(22,160,83,.15);color:#1aa053;border-color:rgba(22,160,83,.4)}
+.flash.warn{background:rgba(201,138,30,.15);color:#c98a1e;border-color:rgba(201,138,30,.45)}
+.flash.bad{background:rgba(208,82,82,.15);color:#d05252;border-color:rgba(208,82,82,.45)}
+.pill.match,.pill.verified,.pill.complete{background:rgba(22,160,83,.16);color:#1aa053}
+.pill.variance,.pill.counting{background:rgba(201,138,30,.18);color:#c98a1e}
+.pill.uncounted{background:rgba(208,82,82,.16);color:#d25151}
+.pill.unexpected{background:rgba(120,127,240,.18);color:#7c7ff0}
+.pill.open,.pill.review{background:rgba(74,159,214,.18);color:#4a9fd6}
+.pill.closed,.pill.pending{background:var(--panel2);color:var(--muted)}
+.brand-logo{display:flex;align-items:center;gap:8px}
+.brand-logo .wordmark{font-weight:900;font-style:italic;font-size:18px;letter-spacing:1px;color:var(--brand)}
+.brand-logo svg .b1{fill:var(--txt)}.brand-logo svg .b2{fill:var(--muted)}.brand-logo svg .b3{fill:var(--brand)}
+.appname{font-weight:800;font-size:17px;color:var(--txt);padding-left:10px;border-left:2px solid var(--line)}
+.theme-btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:15px;line-height:1}
+/* ---- per-view widths: Control Tower = desktop-wide, Scanner/Create = mobile-compact ---- */
+main{max-width:100%;margin:0}
+#view-create,#view-scan{max-width:680px;margin:0 auto}
+#view-dash{max-width:1180px;margin:0 auto}
+#view-tower{max-width:1650px;margin:0 auto}
+#view-tower .tbl-wrap{max-height:74vh}
+/* solid sticky table headers while scrolling */
+th{z-index:3;box-shadow:inset 0 -1px 0 var(--line),0 1px 3px rgba(0,0,0,.25)}
+
+/* ---- SCANNER MODE (handhelds: /scan, ?mode=scanner or #scan) ----
+   Same single-file app, one view: the admin header, the four tabs, the WMS
+   snapshot card and every expected quantity are hidden so the counter does a
+   blind count on a 5-inch screen. Admin surface (desktop) is untouched. */
+body.scanner header{padding:6px 10px;gap:6px;flex-wrap:nowrap}
+body.scanner header>.brand-logo,body.scanner .appname,body.scanner .tabs,body.scanner #sessionBadge,body.scanner #counterBadge{display:none!important}
+body.scanner .scan-strip{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.scan-strip{display:none}
+body.scanner header>.spacer{display:none}
+.scan-strip .chip{font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.scan-strip .chip.job{flex:1 1 auto;min-width:0}
+.scan-strip .chip.who{flex:0 0 auto;max-width:34vw}
+.scan-strip .chip.job{color:#1aa053;background:rgba(22,160,83,.16);border-color:rgba(22,160,83,.4)}
+.scan-strip .chip.job.none{color:var(--muted);background:var(--panel2);border-color:var(--line)}
+.scan-strip .chip.who.unset{color:#fde68a;background:rgba(201,138,30,.18);border-color:rgba(201,138,30,.45)}
+.scan-strip .chip.brand{padding:4px 6px;max-width:none;cursor:default}
+body.scanner .theme-btn{padding:5px 8px;font-size:13px}
+body.scanner main{padding:10px}
+body.scanner #view-scan{max-width:100%}
+body.scanner .card{padding:12px;margin-bottom:10px;border-radius:12px}
+body.scanner .q{font-size:20px;margin:2px 0 12px}
+body.scanner .crumbs{margin-bottom:8px}
+body.scanner .footer-note{padding:10px 0;font-size:10px}
+body.scanner #loc-info.snap{display:none!important}          /* snapshot kv table — admin only */
+body.scanner #rec-card .tbl-wrap{display:none}
+body.scanner #rec-card.open .tbl-wrap{display:block;max-height:220px}
+body.scanner #rec-card th:nth-child(n+6),body.scanner #rec-card td:nth-child(n+6){display:none} /* drop By column, keep ✕ */
+body.scanner #rec-card th:nth-child(2),body.scanner #rec-card td:nth-child(2){display:none}       /* drop Pallet column */
+#rec-card .rec-head{display:flex;align-items:center;gap:8px;cursor:default}
+body.scanner #rec-card .rec-head{cursor:pointer}
+#rec-last{display:none;font-size:12px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.scanner #rec-last{display:block}
+body.scanner #rec-card.open #rec-last{display:none}
+#rec-caret{display:none;color:var(--muted);font-size:12px}
+body.scanner #rec-caret{display:inline}
+.pick-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.pick-row:last-child{border-bottom:none}
+.pick-row .pm{flex:1;min-width:0}.pick-row .pm b{display:block;font-size:14px}.pick-row .pm span{font-size:12px;color:var(--muted)}
+/* ---- directive counting (next-location card + counter type) ---- */
+.ctype{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.ctype button{padding:14px 8px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);color:var(--txt);font-weight:800;font-size:15px;cursor:pointer;text-align:left}
+.ctype button small{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:4px;line-height:1.3}
+.ctype button.sel{border-color:var(--brand);background:rgba(152,1,46,.12)}
+#directive{border:1px solid rgba(22,160,83,.45);background:rgba(22,160,83,.08)}
+#directive .d-head{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+#directive .d-head b{color:#1aa053;font-size:12px;letter-spacing:.4px;text-transform:uppercase}
+#directive .d-loc{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:900;font-size:24px;letter-spacing:.5px;margin:6px 0 2px;word-break:break-all;line-height:1.15}
+#directive .d-meta{font-size:12px;color:var(--muted)}
+#directive .d-prog{height:6px;border-radius:4px;background:var(--panel2);margin:8px 0 6px;overflow:hidden}
+#directive .d-prog i{display:block;height:100%;background:#1aa053;width:0}
+#directive .d-queue{font-size:11px;color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#directive .d-actions{display:flex;gap:6px;align-items:center;margin-top:6px}
+#directive.mini .d-loc{font-size:15px;margin:2px 0}
+#directive.mini .d-prog,#directive.mini .d-queue,#directive.mini .d-actions,#directive.mini .d-meta{display:none}
+#directive.alldone{border-color:rgba(201,138,30,.5);background:rgba(201,138,30,.1)}
+#loc-blocked .who{font-size:15px;font-weight:700;margin:6px 0}
+/* unexpected stock: error card + capture steps */
+#u-ack{border:2px solid #dc2626;background:rgba(220,38,38,.12)}
+#u-ack .step-title{color:#f87171;font-size:18px}
+#u-ack .what{font-size:16px;font-weight:700;margin:6px 0;line-height:1.35}
+#u-ack .why{font-size:13px;margin:4px 0 8px;line-height:1.4}
+#u-ack .next{font-size:13px;color:var(--muted);line-height:1.45}
+.step.unx{border-color:rgba(220,38,38,.55)}
+.step.unx .step-title{color:#f87171}
+.crumb.unx{background:rgba(220,38,38,.18);color:#fecaca;border:1px solid rgba(220,38,38,.5)}
+#each-tbl tr.unx td{color:#f87171}
+[data-theme="light"] #u-ack .step-title,[data-theme="light"] .step.unx .step-title,[data-theme="light"] #each-tbl tr.unx td{color:#b91c1c}
+[data-theme="light"] .crumb.unx{color:#b91c1c}
+.ok-only #modal-no{display:none}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand-logo"><svg viewBox="0 0 44 34" width="30" height="24" aria-hidden="true"><polygon class="b1" points="9,2 43,2 34,10 0,10"/><polygon class="b2" points="9,13 43,13 34,21 0,21"/><polygon class="b3" points="9,24 43,24 34,32 0,32"/></svg><span class="wordmark">ARGENTS</span></span>
+  <span class="appname">Contare</span>
+  <span class="badge" id="sessionBadge">No active count</span>
+  <span class="badge" id="counterBadge" onclick="setCounter()" style="cursor:pointer">Counter: —</span>
+  <!-- scanner-mode header strip (hidden unless body.scanner) -->
+  <div class="scan-strip" id="scan-strip">
+    <span class="chip brand brand-logo" style="display:flex"><svg viewBox="0 0 44 34" width="22" height="17" aria-hidden="true"><polygon class="b1" points="9,2 43,2 34,10 0,10"/><polygon class="b2" points="9,13 43,13 34,21 0,21"/><polygon class="b3" points="9,24 43,24 34,32 0,32"/></svg></span>
+    <span class="chip job none mono" id="strip-job" onclick="scanPickCount()" title="Tap to switch count">No count</span>
+    <span class="chip who unset" id="strip-who" onclick="setCounter()" title="Tap to set your name">Set name</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="tabs">
+    <button class="tab active" data-view="create" onclick="setView('create')">Create Count Job</button>
+    <button class="tab" data-view="tower" onclick="setView('tower')">Control Tower</button>
+    <button class="tab" data-view="scan" onclick="setView('scan')">Scanner</button>
+    <button class="tab" data-view="dash" onclick="setView('dash')">Dashboard</button>
+  </div>
+  <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle light / dark">🌙</button>
+</header>
+<main>
+<div id="flash-slot"></div>
+
+<!-- Yes/No confirm modal -->
+<div id="modal-ov" class="modal-ov hidden">
+  <div class="modal">
+    <div id="modal-msg" class="modal-msg"></div>
+    <div class="modal-btns">
+      <button class="btn ghost" id="modal-no">No</button>
+      <button class="btn ok" id="modal-yes">Yes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CREATE COUNT JOB ================= -->
+<section id="view-create">
+  <div class="card">
+    <b>Create Count Job</b>
+    <div class="small" style="margin:6px 0 4px">Set the stock-pull criteria for a new count. The name auto-formats as <span class="mono">C####-Customer-Warehouse-FreeText</span>.</div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label class="fld">Customer</label><select class="t" id="nc-customer" onchange="previewName()"></select></div>
+      <div><label class="fld">Warehouse</label><select class="t" id="nc-warehouse" onchange="previewName()"></select></div>
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label class="fld">Scope</label>
+        <select class="t" id="nc-scope" onchange="scopeHint()"><option value="whole_customer">Whole customer</option><option value="zones">Zones</option><option value="areas">Area</option><option value="rows">Row(s)</option><option value="locations">Locations</option><option value="skus">SKU(s)</option></select></div>
+      <div><label class="fld" id="nc-scopeval-l">Zones / Areas / Locations (comma-sep)</label>
+        <input class="t" id="nc-scopeval" placeholder="e.g. CK, RK (areas) · C1Z (zones)"></div>
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label class="fld">Name suffix (free text)</label>
+        <input class="t" id="nc-freetext" placeholder="e.g. NIGHT-CREW, WK28, RECOUNT" oninput="previewName()"></div>
+      <div><label class="fld">Count name preview</label>
+        <input class="t mono" id="nc-nameprev" readonly style="opacity:.85"></div>
+    </div>
+    <div style="margin-top:14px"><button class="btn" id="nc-btn" onclick="createCount()">＋ Create Count Job &amp; Pull WMS Snapshot</button></div>
+    <div id="nc-progress" class="hidden" style="margin-top:14px">
+      <div class="prog"><div id="nc-bar"></div></div>
+      <div class="small" id="nc-progtext" style="margin-top:6px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CONTROL TOWER ================= -->
+<section id="view-tower" class="hidden">
+  <div class="card">
+    <div class="row" style="align-items:center"><b>Control Tower</b><div class="spacer"></div><button class="btn ghost sm" onclick="loadTower()">↻ Refresh</button></div>
+    <div class="row" style="margin-top:12px;gap:8px">
+      <select class="t" id="tf-customer" onchange="renderTower()" style="width:auto;min-width:150px"></select>
+      <select class="t" id="tf-warehouse" onchange="renderTower()" style="width:auto;min-width:140px"></select>
+      <select class="t" id="tf-scope" onchange="renderTower()" style="width:auto"><option value="">All scopes</option><option value="whole_customer">Whole customer</option><option value="zones">Zones</option><option value="areas">Areas</option><option value="rows">Row(s)</option><option value="locations">Locations</option><option value="skus">SKU(s)</option></select>
+      <select class="t" id="tf-status" onchange="renderTower()" style="width:auto"><option value="">All statuses</option><option value="pending">Pending</option><option value="open">Open</option><option value="under_review">Under Review</option><option value="complete">Complete</option><option value="closed">Closed</option></select>
+      <input class="t" id="tf-from" type="date" onchange="renderTower()" style="width:auto" title="Created from">
+      <input class="t" id="tf-to" type="date" onchange="renderTower()" style="width:auto" title="Created to">
+      <input class="t" id="tf-search" placeholder="search…" oninput="renderTower()" style="width:150px">
+    </div>
+    <div class="tbl-wrap" style="margin-top:12px;max-height:560px">
+      <table id="tower-tbl"><thead><tr>
+        <th>Count</th><th>Customer</th><th>Warehouse</th><th>Scope</th><th>Status</th><th>Snapshot</th>
+        <th>Matched</th><th>Variance</th><th>Unexpected</th><th>Uncounted</th><th>Line Acc.</th><th>Created</th><th>Actions</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <div class="small" id="tower-note" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<!-- ================= SCANNER ================= -->
+<section id="view-scan" class="hidden">
+  <div class="card hidden" id="scan-nosession"><b>No active count.</b> <span class="small">Go to Create Count Job or Control Tower and create or resume a count first.</span></div>
+  <!-- scanner mode: counter must identify themselves before anything records -->
+  <div class="card hidden" id="scan-counter">
+    <div class="step-title">Before you start</div>
+    <div class="small mono" id="scan-counter-job" style="margin-bottom:8px"></div>
+    <label class="fld">Your name (counter)</label>
+    <input class="scan" id="in-counter" placeholder="e.g. Maria" autocomplete="off" autocapitalize="words" style="font-size:18px">
+    <label class="fld" style="margin-top:12px">Type of count</label>
+    <div class="ctype">
+      <button type="button" id="ctype-floor" onclick="pickCtype('floor')">🚶 Floor Count<small>Level A anywhere · FS · IB · OB · CK · PK and other ground-level areas</small></button>
+      <button type="button" id="ctype-lift" onclick="pickCtype('lift')">🏗️ Lift Count<small>Racking (RK) · Levels B, C, D, E, F</small></button>
+    </div>
+    <div class="hint">Every scan is recorded under this name. The app then tells you which location to count next. Tap the name chip at the top to change name or count type.</div>
+    <div style="margin-top:12px"><button class="btn ok lg" onclick="saveCounterInline()">✓ Start Counting</button></div>
+  </div>
+  <!-- scanner mode: pick the count to work on (replaces Control Tower on the handheld) -->
+  <div class="card hidden" id="scan-pick">
+    <div class="row" style="align-items:center"><div class="step-title" style="margin:0">Pick a count</div><div class="spacer"></div><button class="btn ghost sm" onclick="loadScanPicker()">↻</button></div>
+    <div id="scan-pick-list" class="small" style="margin-top:8px">Loading…</div>
+    <div class="hint">Only open counts are listed. Counts are created and reviewed from the desktop app.</div>
+  </div>
+  <div id="scan-body">
+    <!-- directive: where to count next (scanner mode) -->
+    <div class="card hidden" id="directive">
+      <div class="d-head"><b>Next location</b><span id="d-role"></span><div class="spacer"></div><button class="btn ghost sm" onclick="loadDirective(true)" title="Refresh">↻</button></div>
+      <div class="d-loc" id="d-loc">—</div>
+      <div class="d-meta" id="d-meta"></div>
+      <div class="d-prog"><i id="d-bar"></i></div>
+      <div class="d-queue" id="d-queue"></div>
+      <div class="d-actions"><span class="small" style="flex:1">Go there and scan the location barcode.</span><button class="btn ghost sm" onclick="skipDirective()">Skip →</button></div>
+    </div>
+    <div class="crumbs" id="crumbs"></div>
+
+    <!-- location already counted / being counted elsewhere -->
+    <div class="card hidden" id="loc-blocked">
+      <div class="step-title" id="lb-title">Location already counted</div>
+      <div class="mono" id="lb-loc" style="font-weight:800;font-size:18px"></div>
+      <div class="who" id="lb-who"></div>
+      <div class="hint" id="lb-hint"></div>
+      <div class="row" style="margin-top:12px;gap:8px">
+        <button class="btn ok lg" style="flex:1" onclick="resetFlow()">OK · Scan next location</button>
+        <button class="btn warn hidden" id="lb-takeover" onclick="takeOverLocation()">Take over</button>
+        <button class="btn ghost hidden" id="lb-recount" onclick="recount(flow.blockedLoc)">↺ Recount (admin)</button>
+      </div>
+    </div>
+
+    <div class="card step" id="s-location">
+      <div class="step-title">Step 1 · Location</div>
+      <label class="fld">Scan Location Barcode</label>
+      <input class="scan" id="in-location" placeholder="e.g. RK-B1R-00-W-8-B-1" autocomplete="off" autocapitalize="characters">
+      <div class="hint">Scan or type the location, then press Enter.</div>
+    </div>
+    <div class="card hidden" id="loc-info"></div>
+
+    <div class="card step hidden" id="s-pallet-avail">
+      <div class="step-title">Step 2 · License Plate</div>
+      <div class="q">Is a Pallet Tag available?</div>
+      <div class="yn"><button class="btn ok lg" onclick="answerPalletAvail(true)">YES</button><button class="btn ghost lg" onclick="answerPalletAvail(false)">NO</button></div>
+      <div class="hint" style="margin-top:10px;color:var(--muted)">More pallets/cases at this location? Keep scanning — each one records and returns here. Press below only when the whole location is done.</div>
+      <button class="btn lg" style="background:var(--brand);color:#fff;width:100%;margin-top:6px" onclick="finishLocation()">✓ Location Count Complete</button>
+    </div>
+    <div class="card step hidden" id="s-pallet-scan">
+      <div class="step-title">Pallet Tag</div>
+      <label class="fld">Scan Pallet Tag</label>
+      <input class="scan" id="in-pallet" placeholder="e.g. PLT-ELG-AEG-Y25-0028979" autocomplete="off" autocapitalize="characters">
+    </div>
+    <div class="card step hidden" id="s-pallet-open">
+      <div class="step-title">Pallet Tag</div>
+      <div class="q">Is the Pallet Tag <u>open</u>?</div>
+      <div class="hint" style="margin-bottom:12px">Closed = full/sealed (auto-record all cases). Open = some cases missing or opened — scan each case, then say whether it is open.</div>
+      <div class="yn"><button class="btn warn lg" onclick="answerPalletOpen(true)">YES · Open</button><button class="btn ok lg" onclick="answerPalletOpen(false)">NO · Closed</button></div>
+    </div>
+    <div class="card step hidden" id="s-pallet-sku">
+      <div class="step-title">Closed Pallet · Verify SKU</div>
+      <label class="fld">Scan SKU</label>
+      <input class="scan" id="in-pallet-sku" placeholder="Scan SKU on pallet" autocomplete="off" autocapitalize="characters">
+      <div id="pallet-preview" class="hint"></div>
+      <div style="margin-top:14px"><button class="btn ok lg" onclick="commitClosedPallet()">✓ SKU Verified — Record Pallet</button></div>
+    </div>
+    <div class="card step hidden" id="s-pallet-cases">
+      <div class="step-title">Open Pallet · Scan each Case</div>
+      <label class="fld">Scan Case Number</label>
+      <input class="scan" id="in-open-pallet-case" placeholder="Scan case on pallet" autocomplete="off" autocapitalize="characters">
+      <div class="hint" id="open-pallet-progress"></div>
+      <div style="margin-top:12px"><button class="btn ok lg" onclick="nextItem()">✓ Pallet Count Complete</button></div>
+    </div>
+    <div class="card step hidden" id="s-opc-open">
+      <div class="step-title">Open Pallet · Case</div>
+      <div class="q">Is the Case <u>open</u>?</div>
+      <div class="hint" style="margin-bottom:12px" id="opc-hint">Closed = sealed (record the WMS quantity). Open = partial, scan each unit inside.</div>
+      <div class="yn"><button class="btn warn lg" onclick="answerOpenPalletCaseOpen(true)">YES · Open</button><button class="btn ok lg" onclick="answerOpenPalletCaseOpen(false)">NO · Closed</button></div>
+    </div>
+    <div class="card step hidden" id="s-case-avail">
+      <div class="step-title">Step 3 · Case</div>
+      <div class="q">Is a Case Number available?</div>
+      <div class="yn"><button class="btn ok lg" onclick="answerCaseAvail(true)">YES</button><button class="btn ghost lg" onclick="answerCaseAvail(false)">NO</button></div>
+      <div id="case-avail-finish" class="hidden">
+        <div class="hint" style="margin-top:10px;color:var(--muted)">No pallet tags at this location — more cases/eaches here? Keep scanning; each one records and returns here. Press below only when the whole location is done.</div>
+        <button class="btn lg" style="background:var(--brand);color:#fff;width:100%;margin-top:6px" onclick="finishLocation()">✓ Location Count Complete</button>
+      </div>
+    </div>
+    <div class="card step hidden" id="s-case-scan">
+      <div class="step-title">Case Number</div>
+      <label class="fld">Scan Case Number</label>
+      <input class="scan" id="in-case" placeholder="e.g. CS-ELG-AEG-Y25-0340556" autocomplete="off" autocapitalize="characters">
+    </div>
+    <div class="card step hidden" id="s-case-open">
+      <div class="step-title">Case</div>
+      <div class="q">Is the Case <u>open</u>?</div>
+      <div class="yn"><button class="btn warn lg" onclick="answerCaseOpen(true)">YES · Open</button><button class="btn ok lg" onclick="answerCaseOpen(false)">NO · Closed</button></div>
+    </div>
+    <div class="card step hidden" id="s-case-sku">
+      <div class="step-title">Closed Case · Verify SKU</div>
+      <label class="fld">Scan SKU</label>
+      <input class="scan" id="in-case-sku" placeholder="Scan SKU in case" autocomplete="off" autocapitalize="characters">
+      <div id="case-preview" class="hint"></div>
+      <div style="margin-top:14px"><button class="btn ok lg" onclick="commitClosedCase()">✓ SKU Verified — Record Case</button></div>
+    </div>
+    <div class="card step hidden" id="s-eaches">
+      <div class="step-title" id="eaches-title">Each Count</div>
+      <div class="counter" id="eaches-count">0</div>
+      <div class="hint" style="text-align:center;margin-bottom:14px" id="eaches-sub"></div>
+      <label class="fld">Scan Unit (SKU / UPC)</label>
+      <input class="scan" id="in-each" placeholder="Scan unit — or 186399*12" autocomplete="off" autocapitalize="characters">
+      <div class="tbl-wrap" style="margin-top:12px;max-height:180px"><table id="each-tbl"><thead><tr><th>SKU</th><th>Qty</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="row" style="margin-top:12px"><button class="btn ok" style="flex:1" id="btn-eaches-done" onclick="commitEaches()">✓ Count Complete</button><button class="btn ghost" onclick="cancelStep()">Cancel</button></div>
+    </div>
+
+
+    <!-- ===== Unexpected stock: error acknowledgement + capture (location carried forward) ===== -->
+    <div class="card step hidden" id="u-ack">
+      <div class="step-title" id="u-ack-title">⛔ Unexpected</div>
+      <div class="what" id="u-ack-what"></div>
+      <div class="why" id="u-ack-why"></div>
+      <div class="next" id="u-ack-next"></div>
+      <button class="btn bad lg" style="width:100%;margin-top:12px;background:#dc2626;color:#fff" onclick="ackUnexpected()">OK — record it as found stock</button>
+    </div>
+    <div class="card step unx hidden" id="u-pallet">
+      <div class="step-title">Unexpected stock · Pallet Tag</div>
+      <label class="fld">Scan the Pallet Tag this stock is on</label>
+      <input class="scan" id="in-u-pallet" placeholder="Scan pallet tag" autocomplete="off" autocapitalize="characters">
+      <div class="row" style="margin-top:10px"><button class="btn ghost" style="flex:1" onclick="unxNoPallet()">No pallet tag</button><button class="btn ghost" onclick="cancelStep()">Cancel</button></div>
+    </div>
+    <div class="card step unx hidden" id="u-case">
+      <div class="step-title">Unexpected stock · Case LPN</div>
+      <label class="fld">Scan the Case LPN</label>
+      <input class="scan" id="in-u-case" placeholder="Scan case LPN" autocomplete="off" autocapitalize="characters">
+      <div class="hint" id="u-case-hint"></div>
+      <div class="row" style="margin-top:10px"><button class="btn ghost" style="flex:1" onclick="unxNoCase()">No case LPN · loose units</button><button class="btn ok hidden" id="u-pallet-done" onclick="unxPalletDone()">✓ Pallet done</button><button class="btn ghost" onclick="cancelStep()">Cancel</button></div>
+    </div>
+    <div class="card step unx hidden" id="u-sku">
+      <div class="step-title">Unexpected stock · SKU</div>
+      <label class="fld">Scan the SKU / UPC</label>
+      <input class="scan" id="in-u-sku" placeholder="Scan SKU or UPC" autocomplete="off" autocapitalize="characters">
+      <div class="hint">Next you will scan every unit present, one scan per unit.</div>
+      <div class="row" style="margin-top:10px"><button class="btn ghost" onclick="cancelStep()">Cancel</button></div>
+    </div>
+    <div class="row" style="margin:4px 0 16px"><button class="btn ghost" onclick="restartLocation()">↺ Restart Location</button></div>
+
+    <div class="card" id="rec-card">
+      <div class="rec-head" onclick="toggleRecent()"><b>Recent scans (live)</b><span class="badge" id="rec-count">0</span><div class="spacer"></div><span id="rec-caret">▾ show</span></div>
+      <div id="rec-last"></div>
+      <div class="tbl-wrap" style="margin-top:10px"><table id="rec-tbl"><thead><tr><th>Location</th><th>Pallet</th><th>Case</th><th>SKU</th><th>Qty</th><th>By</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DASHBOARD ================= -->
+<section id="view-dash" class="hidden">
+  <div class="card hidden" id="dash-nosession"><b>No active count.</b> <span class="small">Create or resume a count first.</span></div>
+  <div id="dash-body">
+    <div class="tile-row r1"><div class="rt">Count data</div><div class="tiles" id="dash-tiles"></div></div>
+    <div class="tile-row r2"><div class="rt">Location metrics <span style="font-weight:400;text-transform:none;letter-spacing:0">— a location is Matched only when every line at it matches; one short carton makes the whole location a Variance</span></div><div class="tiles" id="dash-tiles-loc"></div></div>
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <b>Reconciliation — Scanned vs WMS snapshot</b><div class="spacer"></div>
+        <input class="t" id="dash-search" placeholder="search sku / case / location" oninput="debouncedDash()" style="width:200px">
+        <select class="t" id="dash-filter" onchange="loadReconDetail()" style="width:180px">
+          <option value="all" selected>All</option><option value="variance">Variances</option>
+          <option value="uncounted">Uncounted</option><option value="unexpected">Unexpected</option><option value="match">Matched</option>
+          <option value="loc:recount">Locations to recount</option><option value="loc:all">All locations (by status)</option>
+        </select>
+        <button class="btn ghost sm" onclick="exportRecon()">⬇ Recon CSV</button><button class="btn ghost sm" onclick="exportScans()">⬇ Scans CSV</button><button class="btn ghost sm" onclick="refreshDash()">↻</button>
+      </div>
+      <div class="tbl-wrap" style="margin-top:12px;max-height:520px">
+        <table id="dash-tbl"><thead><tr><th>Status</th><th>Location</th><th>Pallet Tag</th><th>Case</th><th>SKU</th><th>Product</th><th>WMS</th><th>Counted</th><th>Δ</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="small" style="margin-top:8px" id="dash-note"></div>
+    </div>
+  </div>
+</section>
+
+<div class="footer-note">Argents Express · Contare — WMS Physical Count · <span id="build-date"></span> · <span id="conn-state">connecting…</span></div>
+</main>
+
+<script>
+/* ---------- Supabase config (anon key is safe to expose; RLS governs access) ---------- */
+const SUPABASE_URL = "https://iwzgkklkcngoctrnqzlc.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3emdra2xrY25nb2N0cm5xemxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjQ5MDksImV4cCI6MjA5OTIwMDkwOX0.hpB_S2U4ZNypplT44V0QoylSCRti1wxjpji3gBN2jDE";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+/* ---------- state ---------- */
+let session = null;          // active count_sessions row (joined customer/warehouse)
+let flow = {};
+let eachBuf = {};
+let CUST=[],WH=[],TOWER=[],NEXTNUM='';
+let recChan = null;          // realtime channel
+const STEPS=['s-location','s-pallet-avail','s-pallet-scan','s-pallet-open','s-pallet-sku','s-pallet-cases','s-opc-open','s-case-avail','s-case-scan','s-case-open','s-case-sku','s-eaches','u-ack','u-pallet','u-case','u-sku'];
+
+/* ---------- scanner mode ----------
+   /scan (vercel.json rewrite), ?mode=scanner or #scan → body.scanner.
+   One view (Scanner), compact header strip, no snapshot, no expected
+   quantities, counter name required. The handhelds bookmark /scan. */
+const SCANNER = /^\/scan\/?$/i.test(location.pathname) || /[?&]mode=scanner\b/i.test(location.search) || /^#scan$/i.test(location.hash);
+if(SCANNER) document.body.classList.add('scanner');
+
+function counter(){return localStorage.getItem('pc_counter')||''}
+function ctype(){const t=localStorage.getItem('pc_ctype');return (t==='floor'||t==='lift')?t:'';}
+function deviceId(){let d=localStorage.getItem('pc_device');if(!d){d='dev-'+Math.random().toString(36).slice(2,8);localStorage.setItem('pc_device',d);}return d;}
+/* ---------- directive counting state ----------
+   registeredFor: session id the current name+type has been registered on (count_counters).
+   directive:     last next_directive() answer for this counter.  skipList: locations the
+   counter skipped on this device (offered again once nothing else is left). */
+let registeredFor=null, directive=null, skipList=[], dirTimer=null, dirChan=null;
+function setCounter(){
+  if(SCANNER){ // inline card instead of a browser prompt on the handheld
+    const c=document.getElementById('scan-counter');c.classList.remove('hidden');
+    ['scan-body','scan-pick','scan-nosession'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+    document.getElementById('scan-counter-job').textContent=session?('Count: '+session.count_id+' · '+session.customer.name):'';
+    const i=document.getElementById('in-counter');i.value=counter();pickCtype(ctype(),true);setTimeout(()=>i.focus(),30);return;
+  }
+  const v=prompt('Your name (counter):',counter());if(v!=null){localStorage.setItem('pc_counter',v.trim());updateBadges();}
+}
+function pickCtype(t,silent){ if(t)localStorage.setItem('pc_ctype',t); else localStorage.removeItem('pc_ctype');
+  document.getElementById('ctype-floor').classList.toggle('sel',t==='floor');document.getElementById('ctype-lift').classList.toggle('sel',t==='lift');
+  if(!silent)document.getElementById('in-counter').blur(); }
+async function saveCounterInline(){const v=document.getElementById('in-counter').value.trim();if(!v){flash('warn','Enter your name to start counting.');return;}
+  if(!ctype()){flash('warn','Choose Floor Count or Lift Count.');return;}
+  const changed=v!==counter(); localStorage.setItem('pc_counter',v);updateBadges();
+  if(session){ const ok=await registerCounter(); if(!ok)return; }
+  flash('ok',(changed?'Counting as '+v:'Ready')+' — '+(ctype()==='lift'?'Lift':'Floor')+' count.');setView('scan');}
+/* register name + type on the active count; the server assigns the join-order sequence that drives direction */
+async function registerCounter(){
+  if(!session||!counter()||!ctype())return false;
+  const {data,error}=await sb.rpc('register_counter',{p_session:session.id,p_name:counter(),p_type:ctype(),p_device:deviceId()});
+  if(error){flash('bad','Could not register counter: '+error.message);return false;}
+  registeredFor=session.id; directive=null; skipList=[]; return true;
+}
+function updateBadges(){
+  document.getElementById('counterBadge').textContent='Counter: '+(counter()||'set name');
+  document.getElementById('sessionBadge').textContent = session ? (session.count_id+' · '+session.customer.name+' · '+session.warehouse.name) : 'No active count';
+  document.getElementById('sessionBadge').className='badge'+(session?' ok':'');
+  // scanner strip
+  const j=document.getElementById('strip-job'),w=document.getElementById('strip-who');
+  if(j){j.textContent=session?session.count_id:'No count';j.className='chip job mono'+(session?'':' none');j.title=session?(session.customer.name+' · '+session.warehouse.name+' — tap to switch'):'Tap to pick a count';}
+  if(w){w.textContent=(counter()||'Set name')+(counter()&&ctype()?(ctype()==='lift'?' · Lift':' · Floor'):'');w.className='chip who'+(counter()?'':' unset');}
+}
+/* remember the active count across reloads (handhelds get power-cycled) */
+function rememberSession(){ if(session)localStorage.setItem('pc_session_id',session.id); else localStorage.removeItem('pc_session_id'); }
+async function restoreSession(){
+  const id=localStorage.getItem('pc_session_id'); if(!id)return false;
+  const {data,error}=await sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').eq('id',id).maybeSingle();
+  if(error||!data||data.status==='verified'||data.status==='closed'){localStorage.removeItem('pc_session_id');return false;}
+  session=data;registeredFor=null;subscribeScans();updateBadges();return true;
+}
+/* after a reload: is this name+type already registered on the restored count? (skips the gate card) */
+async function checkRegistered(){
+  if(!session||!counter()||!ctype())return false;
+  const {data}=await sb.from('count_counters').select('counter_type').eq('session_id',session.id).eq('counter_name',counter()).maybeSingle();
+  if(data&&data.counter_type===ctype()){registeredFor=session.id;sb.rpc('register_counter',{p_session:session.id,p_name:counter(),p_type:ctype(),p_device:deviceId()});return true;}
+  return false;
+}
+/* scanner-mode count picker: open/counting sessions only, no status changes */
+function scanPickCount(){ if(!SCANNER)return; ['scan-body','scan-counter','scan-nosession'].forEach(id=>document.getElementById(id).classList.add('hidden')); document.getElementById('scan-pick').classList.remove('hidden'); loadScanPicker(); }
+async function loadScanPicker(){
+  const el=document.getElementById('scan-pick-list'); el.textContent='Loading…';
+  const {data,error}=await sb.from('count_sessions').select('id,count_id,status,scope_type,scope_values,created_at, customer:customers(name), warehouse:warehouses(name)').in('status',['open','counting']).order('created_at',{ascending:false}).limit(25);
+  if(error){el.textContent='Load failed: '+error.message;return;}
+  if(!data||!data.length){el.textContent='No open counts. Ask the office to create one.';return;}
+  el.innerHTML=data.map(s=>`<div class="pick-row"><div class="pm"><b class="mono">${s.count_id}</b><span>${s.customer?.name||''} · ${s.warehouse?.name||''} · ${s.scope_type==='whole_customer'?'whole customer':s.scope_type+': '+(s.scope_values||[]).join(', ')}</span></div><button class="btn ok sm" onclick="scanUseCount('${s.id}')">${session&&session.id===s.id?'Current':'Use'}</button></div>`).join('');
+}
+async function scanUseCount(id){
+  const {data,error}=await sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').eq('id',id).single();
+  if(error){flash('bad',error.message);return;}
+  session=data;registeredFor=null;directive=null;skipList=[];rememberSession();subscribeScans();updateBadges();flash('ok','Counting '+data.count_id+' — '+data.customer.name);
+  setCounter(); // spec: on choosing a count → ask name → ask type (prefilled from last time)
+}
+function toggleRecent(){ if(!SCANNER)return; const c=document.getElementById('rec-card');c.classList.toggle('open');document.getElementById('rec-caret').textContent=c.classList.contains('open')?'▴ hide':'▾ show'; }
+function flash(type,msg){const s=document.getElementById('flash-slot');s.innerHTML='<div class="flash '+type+'">'+msg+'</div>';if(type==='ok')setTimeout(()=>{if(s.firstChild)s.innerHTML=''},4000);}
+
+/* ---------- views ---------- */
+function setView(v){
+  if(SCANNER)v='scan';                       // handheld has exactly one view
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v));
+  ['create','tower','scan','dash'].forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));
+  if(v==='create')previewName();
+  if(v==='tower')loadTower();
+  if(v==='scan'){
+    const g=id=>document.getElementById(id);
+    g('scan-counter').classList.add('hidden');g('scan-pick').classList.add('hidden');
+    if(SCANNER){
+      // gate order: count → name + count type (registered on that count) → scanning
+      g('scan-nosession').classList.add('hidden');g('scan-body').classList.add('hidden');
+      if(!session){scanPickCount();return;}
+      if(!counter()||!ctype()||registeredFor!==session.id){setCounter();return;}
+      g('scan-body').classList.remove('hidden');resetFlow();loadRecentScans();loadDirective();return;
+    }
+    g('scan-nosession').classList.toggle('hidden',!!session); g('scan-body').classList.toggle('hidden',!session); if(session){resetFlow();loadRecentScans();} }
+  if(v==='dash'){ document.getElementById('dash-nosession').classList.toggle('hidden',!!session); document.getElementById('dash-body').classList.toggle('hidden',!session); if(session)refreshDash(); }
+}
+/* ---------- theme ---------- */
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);localStorage.setItem('pc_theme',t);const b=document.getElementById('theme-btn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
+function toggleTheme(){applyTheme((localStorage.getItem('pc_theme')||'dark')==='light'?'dark':'light');}
+
+/* ---------- sessions ---------- */
+async function loadRefLists(){
+  const {data:cust} = await sb.from('customers').select('*').order('name');
+  const {data:wh} = await sb.from('warehouses').select('*').order('name');
+  CUST=cust||[];WH=wh||[];
+  document.getElementById('nc-customer').innerHTML=CUST.map(c=>`<option value="${c.id}" data-vendor="${c.vendor_id}" data-code="${c.code||''}">${c.name} (${c.code||c.vendor_id})</option>`).join('');
+  document.getElementById('nc-warehouse').innerHTML=WH.map(w=>`<option value="${w.id}" data-ext="${w.external_id||''}" ${w.id===32?'selected':''}>${w.name}</option>`).join('');
+  document.getElementById('tf-customer').innerHTML='<option value="">All customers</option>'+CUST.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  document.getElementById('tf-warehouse').innerHTML='<option value="">All warehouses</option>'+WH.map(w=>`<option value="${w.name}">${w.name}</option>`).join('');
+  previewName();
+}
+/* ---------- count naming ---------- */
+function whCode(ext,name){const m=(ext||'').match(/^[A-Za-z]+/);return (m?m[0]:(name||'').slice(0,3)).toUpperCase();}
+function cleanFree(s){return (s||'').trim().toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+function buildName(num){
+  const co=document.getElementById('nc-customer'),wo=document.getElementById('nc-warehouse');
+  const c=co.options[co.selectedIndex],w=wo.options[wo.selectedIndex];
+  const code=c?(c.dataset.code||''):'',wc=w?whCode(w.dataset.ext,w.textContent):'';
+  const ft=cleanFree(document.getElementById('nc-freetext').value);
+  return `${num||'C####'}-${code}-${wc}${ft?'-'+ft:''}`;
+}
+function previewName(){const el=document.getElementById('nc-nameprev');if(el)el.value=buildName(NEXTNUM);}
+/* ---------- Control Tower ---------- */
+function statusBucket(st){return st==='verified'?'complete':st==='closed'?'closed':st==='under_review'?'under_review':st==='open'?'pending':'open';}
+function statusLabel(b){return {complete:'Complete',closed:'Closed',under_review:'Under Review',pending:'Pending',open:'Open'}[b]||b;}
+function pillClass(b){return b==='under_review'?'review':b;}
+async function loadTower(){
+  const [sres,sumres]=await Promise.all([
+    sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').order('created_at',{ascending:false}),
+    sb.from('v_reconciliation_summary').select('*')
+  ]);
+  if(sres.error){flash('bad','Load counts: '+sres.error.message);return;}
+  const sess=sres.data||[];const sumBy={};(sumres.data||[]).forEach(s=>sumBy[s.session_id]=s);
+  const snapBy={};
+  await Promise.all(sess.map(async s=>{const {count}=await sb.from('wms_snapshot_rows').select('*',{count:'exact',head:true}).eq('session_id',s.id);snapBy[s.id]=count||0;}));
+  TOWER=sess.map(s=>({...s,summary:sumBy[s.id]||{},snap:snapBy[s.id]||0}));
+  renderTower();
+}
+function renderTower(){
+  const g=id=>document.getElementById(id).value;
+  const fc=g('tf-customer'),fw=g('tf-warehouse'),fs=g('tf-scope'),fst=g('tf-status'),ff=g('tf-from'),ft=g('tf-to'),fq=g('tf-search').trim().toLowerCase();
+  const tb=document.querySelector('#tower-tbl tbody');tb.innerHTML='';let shown=0;
+  for(const s of TOWER){
+    const b=statusBucket(s.status);
+    if(fc&&(s.customer?.name||'')!==fc)continue;
+    if(fw&&(s.warehouse?.name||'')!==fw)continue;
+    if(fs&&s.scope_type!==fs)continue;
+    if(fst&&b!==fst)continue;
+    const created=new Date(s.created_at);
+    if(ff&&created<new Date(ff+'T00:00:00'))continue;
+    if(ft&&created>new Date(ft+'T23:59:59'))continue;
+    if(fq&&!(`${s.count_id} ${s.customer?.name||''} ${s.warehouse?.name||''} ${s.scope_type} ${(s.scope_values||[]).join(' ')}`.toLowerCase().includes(fq)))continue;
+    shown++;
+    const sm=s.summary||{};const lines=+sm.lines||0;const acc=lines?((+sm.matched||0)/lines*100):0;
+    const isV=s.status==='verified',isC=s.status==='closed';
+    const canReview=!isV&&!isC&&s.status!=='under_review',canComplete=s.status==='under_review',canClose=!isV&&!isC;
+    const acts=`<button class="btn ok sm" onclick="resumeSession('${s.id}')">${isV||isC?'View':'Resume'}</button>`+
+      ` <button class="btn sm" style="background:var(--brand)" onclick="setUnderReview('${s.id}')" ${canReview?'':'disabled'}>Review</button>`+
+      ` <button class="btn sm" style="background:var(--ok)" onclick="completeCount('${s.id}')" ${canComplete?'':'disabled'}>Complete</button>`+
+      ` <button class="btn ghost sm" onclick="closeCount('${s.id}')" ${canClose?'':'disabled'}>Close</button>`+
+      ` <span class="del" title="Delete count" onclick="deleteCount('${s.id}','${s.count_id}')">🗑</span>`;
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td class="mono">${s.count_id}</td><td>${s.customer?.name||''}</td><td>${s.warehouse?.name||''}</td>
+      <td>${s.scope_type}</td><td><span class="pill ${pillClass(b)}">${statusLabel(b)}</span></td>
+      <td>${(s.snap||0).toLocaleString()}</td>
+      <td>${lines?(sm.matched??0):'—'}</td><td>${lines?(sm.variances??0):'—'}</td><td>${lines?(sm.unexpected??0):'—'}</td><td>${lines?(sm.uncounted??0):'—'}</td>
+      <td>${lines?acc.toFixed(1)+'%':'—'}</td>
+      <td class="small">${created.toLocaleString()}</td><td style="white-space:nowrap">${acts}</td></tr>`);
+  }
+  if(!shown)tb.innerHTML='<tr><td colspan="13" class="small">No counts match the current filters.</td></tr>';
+  document.getElementById('tower-note').textContent=`${shown} of ${TOWER.length} count(s) shown`;
+}
+async function closeCount(id){
+  const ok=await confirmYesNo('Close this count? It will be marked Closed and removed from active work. You can still View it.');
+  if(!ok)return;
+  const {error}=await sb.from('count_sessions').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',id);
+  if(error){flash('bad','Close failed: '+error.message);return;}
+  flash('ok','Count closed.');loadTower();
+}
+async function deleteCount(id,label){
+  const ok=await confirmYesNo('Permanently DELETE count '+label+'? This removes its WMS snapshot and every scan. This cannot be undone.');
+  if(!ok)return;
+  const {error}=await sb.from('count_sessions').delete().eq('id',id);
+  if(error){flash('bad','Delete failed: '+error.message);return;}
+  if(session&&session.id===id){session=null;rememberSession();updateBadges();}
+  flash('ok','Count '+label+' deleted.');loadTower();
+}
+async function nextCountNum(){
+  const {data}=await sb.from('count_sessions').select('count_id');
+  let mx=0;(data||[]).forEach(r=>{const m=/^C(\d+)/.exec(r.count_id||'');if(m)mx=Math.max(mx,+m[1]);});
+  NEXTNUM='C'+String(mx+1).padStart(4,'0');return NEXTNUM;
+}
+async function loadSessions(){
+  const {data,error}=await sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').order('created_at',{ascending:false});
+  if(error){flash('bad','Load sessions: '+error.message);return;}
+  const tb=document.querySelector('#sessions-tbl tbody');tb.innerHTML='';
+  for(const s of (data||[])){
+    const {count}=await sb.from('wms_snapshot_rows').select('*',{count:'exact',head:true}).eq('session_id',s.id);
+    // Status is stored/explicit and button-driven.
+    const st=s.status;
+    let disp,cls;
+    if(st==='verified'){disp='Verified';cls='verified';}
+    else if(st==='under_review'){disp='Under Review';cls='review';}
+    else{disp='Counting';cls='counting';}
+    const isVerified=st==='verified';
+    const canReview=!isVerified && st!=='under_review';   // only from Counting
+    const canComplete=st==='under_review';                // Complete only when Under Review
+    const actions=
+      `<button class="btn ok sm" onclick="resumeSession('${s.id}')">${isVerified?'View':'Resume'}</button>`+
+      ` <button class="btn sm" style="background:var(--brand)" onclick="setUnderReview('${s.id}')" ${canReview?'':'disabled'}>Under Review</button>`+
+      ` <button class="btn sm" style="background:var(--ok)" onclick="completeCount('${s.id}')" ${canComplete?'':'disabled'}>Complete</button>`+
+      (isVerified?` <span class="pill verified">🔒 Locked</span>`:'');
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td class="mono">${s.count_id}</td><td>${s.customer?.name||''}</td><td>${s.warehouse?.name||''}</td>
+      <td>${s.scope_type}</td><td><span class="pill ${cls}">${disp}</span></td>
+      <td>${(count||0).toLocaleString()}</td><td class="small">${new Date(s.created_at).toLocaleString()}</td>
+      <td>${actions}</td></tr>`);
+  }
+  if(!data||!data.length) tb.innerHTML='<tr><td colspan="8" class="small">No counts yet — create one above.</td></tr>';
+}
+async function resumeSession(id){
+  const {data,error}=await sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').eq('id',id).single();
+  if(error){flash('bad',error.message);return;}
+  if(data.status==='verified'){
+    // hard-locked: view only
+    session=data;rememberSession();subscribeScans();updateBadges();flash('warn','Count '+data.count_id+' is verified & locked — viewing only.');setView('dash');return;
+  }
+  if(data.status==='under_review'){
+    // soft-locked: Resume reopens for counting
+    await sb.from('count_sessions').update({status:'counting'}).eq('id',id);
+    data.status='counting';flash('ok','Count '+data.count_id+' reopened for counting.');
+  }else{
+    flash('ok','Active count: '+data.count_id+' — '+data.customer.name);
+  }
+  session=data;rememberSession();subscribeScans();updateBadges();setView('scan');
+}
+async function setUnderReview(id){
+  const {error}=await sb.from('count_sessions').update({status:'under_review'}).eq('id',id);
+  if(error){flash('bad','Update failed: '+error.message);return;}
+  flash('ok','Count moved to Under Review (soft-locked). Use Resume to reopen it for counting.');
+  loadTower();
+}
+/* ---------- Yes/No modal + complete/verify ---------- */
+function confirmYesNo(msg){
+  return new Promise(res=>{
+    const ov=document.getElementById('modal-ov');
+    document.getElementById('modal-msg').textContent=msg;
+    ov.classList.remove('hidden');
+    const yes=document.getElementById('modal-yes'),no=document.getElementById('modal-no');
+    const done=v=>{ov.classList.add('hidden');yes.onclick=null;no.onclick=null;res(v);};
+    yes.onclick=()=>done(true);no.onclick=()=>done(false);
+  });
+}
+async function completeCount(id){
+  const ok=await confirmYesNo("By selecting the 'Complete' option, you are verifying the count. The count status will move to Verified and be locked. Do you wish to continue?");
+  if(!ok)return;
+  const {error}=await sb.from('count_sessions').update({status:'verified',closed_at:new Date().toISOString()}).eq('id',id);
+  if(error){flash('bad','Complete failed: '+error.message);return;}
+  flash('ok','Count verified and locked.');
+  loadTower();
+}
+function scopeHint(){
+  const t=document.getElementById('nc-scope').value;
+  const lbl=document.getElementById('nc-scopeval-l');
+  const inp=document.getElementById('nc-scopeval');
+  const cfg={
+    whole_customer:['(entire customer — no values needed)','no values needed'],
+    zones:['Zones (comma-sep)','e.g. C1Z, CK'],
+    areas:['Areas (comma-sep)','e.g. CK, RK'],
+    rows:['Row(s) (comma-sep)','e.g. AD, AR  (4th segment of location)'],
+    locations:['Locations (comma-sep)','e.g. RK-A1R-00-AD-9-A-1'],
+    skus:['SKU(s) (comma-sep)','e.g. 237OB01, 100NB12']
+  };
+  const [l,p]=cfg[t]||cfg.whole_customer;
+  lbl.textContent=l; inp.placeholder=p;
+  inp.disabled=(t==='whole_customer'); if(t==='whole_customer')inp.value='';
+}
+async function createCount(){
+  if(!counter()){setCounter();if(!counter()){flash('warn','Enter your name first.');return;}}
+  const csel=document.getElementById('nc-customer');const opt=csel.options[csel.selectedIndex];
+  const customer_id=csel.value, vendor_id=+opt.dataset.vendor;
+  const warehouse_id=+document.getElementById('nc-warehouse').value;
+  const scope_type=document.getElementById('nc-scope').value;
+  const scopeval=document.getElementById('nc-scopeval').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const btn=document.getElementById('nc-btn');btn.disabled=true;
+  try{
+    const num=await nextCountNum();const count_id=buildName(num);
+    const {data:ins,error}=await sb.from('count_sessions').insert({
+      count_id,customer_id,warehouse_id,scope_type,scope_values:scope_type==='whole_customer'?[]:scopeval,
+      status:'open',counters:[counter()],created_by:counter()
+    }).select('*, customer:customers(*), warehouse:warehouses(*)').single();
+    if(error)throw error;
+    session=ins;rememberSession();updateBadges();
+    // pull snapshot page by page
+    document.getElementById('nc-progress').classList.remove('hidden');
+    const bar=document.getElementById('nc-bar'),ptext=document.getElementById('nc-progtext');
+    // Refresh the product master (SKU -> UPC) first - server gates this to once
+    // per 24h, so it's a no-op most of the time. Non-fatal if it fails: the
+    // snapshot still pulls; UPCs just won't be freshly matched.
+    try{
+      let pp=1,pdone=false;
+      while(!pdone){
+        const pr=await fetch('/api/products-pull',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page:pp})});
+        const pj=await pr.json(); if(!pr.ok)throw new Error(pj.error||'products pull failed');
+        pdone=pj.done;
+        if(!pj.fresh){bar.style.width=Math.round(pp/(pj.lastPage||1)*100)+'%';ptext.textContent=`Refreshing product catalog (UPC)... page ${pp}/${pj.lastPage}`;}
+        pp++; if(pp>(pj.lastPage||1)+2)break;
+      }
+    }catch(e){ /* product refresh is best-effort */ }
+    let page=1,done=false,inserted=0,last=1;
+    while(!done){
+      const r=await fetch('/api/wms-pull',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({sessionId:session.id,vendorId:vendor_id,warehouseId:warehouse_id,page,take:2000,scopeType:scope_type,scopeValues:(scope_type==='whole_customer'?[]:scopeval)})});
+      const j=await r.json();
+      if(!r.ok){throw new Error(j.error||('pull failed p'+page));}
+      inserted+=j.inserted;last=j.lastPage;done=j.done;
+      bar.style.width=Math.round(page/last*100)+'%';
+      ptext.textContent=`Pulling WMS snapshot… page ${page}/${last} · ${inserted.toLocaleString()} ${session.customer.name} rows`;
+      page++;
+      if(page>last+2)break;
+    }
+    ptext.textContent=`Snapshot ready: ${inserted.toLocaleString()} rows frozen for ${session.count_id}.`;
+    subscribeScans();flash('ok','Count '+session.count_id+' created — snapshot has '+inserted.toLocaleString()+' rows.');
+    loadTower();nextCountNum().then(previewName);setTimeout(()=>setView('scan'),600);
+  }catch(e){flash('bad','Create failed: '+e.message);}
+  finally{btn.disabled=false;}
+}
+
+/* ---------- realtime scans ---------- */
+function subscribeScans(){
+  if(recChan) sb.removeChannel(recChan);
+  if(!session)return;
+  recChan=sb.channel('scans-'+session.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'scanned_records',filter:'session_id=eq.'+session.id},()=>{loadRecentScans();})
+    .subscribe();
+  // directive list is shared: any completion / claim / new counter on this count refreshes every handheld
+  if(dirChan) sb.removeChannel(dirChan);
+  dirChan=sb.channel('directive-'+session.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'location_status',filter:'session_id=eq.'+session.id},()=>debouncedDirective())
+    .on('postgres_changes',{event:'*',schema:'public',table:'location_claims',filter:'session_id=eq.'+session.id},()=>debouncedDirective())
+    .on('postgres_changes',{event:'*',schema:'public',table:'count_counters',filter:'session_id=eq.'+session.id},()=>debouncedDirective())
+    .subscribe();
+}
+function debouncedDirective(){clearTimeout(dirTimer);dirTimer=setTimeout(()=>loadDirective(),600);}
+/* ---------- directive: where to count next ---------- */
+async function loadDirective(manual){
+  const card=document.getElementById('directive'); if(!card)return;
+  if(!SCANNER||!session||!counter()||!ctype()||registeredFor!==session.id){card.classList.add('hidden');return;}
+  const {data,error}=await sb.rpc('next_directive',{p_session:session.id,p_name:counter(),p_type:ctype(),p_device:deviceId(),p_skip:skipList});
+  if(error){if(manual)flash('bad','Directive: '+error.message);return;}
+  directive=data; renderDirective();
+}
+function renderDirective(){
+  const card=document.getElementById('directive'),d=directive; if(!card||!d)return;
+  card.classList.remove('hidden');
+  const role=(ctype()==='lift'?'Lift':'Floor')+' · counter #'+d.seq+' '+(d.direction==='asc'?'↑ low→high priority':'↓ high→low priority');
+  document.getElementById('d-role').textContent=role;
+  const pct=d.total?Math.round(d.done/d.total*100):0;
+  document.getElementById('d-bar').style.width=pct+'%';
+  if(!d.location){
+    card.classList.add('alldone');
+    document.getElementById('d-loc').textContent=d.total?'All '+(ctype()==='lift'?'lift':'floor')+' locations counted':'No '+(ctype()==='lift'?'lift':'floor')+' locations in this count';
+    document.getElementById('d-meta').textContent=d.total?(d.done+' of '+d.total+' done'+(d.in_progress?' · '+d.in_progress+' still being counted by others':'')):'Nothing in the WMS snapshot matches this count type — check with the office or switch count type.';
+    document.getElementById('d-queue').textContent='';
+  }else{
+    card.classList.remove('alldone');
+    document.getElementById('d-loc').textContent=d.location;
+    document.getElementById('d-meta').textContent=`Priority ${d.priority_id}${d.area?' · '+d.area+(d.zone?' '+d.zone:'')+(d.level?' · Level '+d.level:''):''} — ${d.done} of ${d.total} done (${pct}%)${d.in_progress?' · '+d.in_progress+' in progress':''}${d.counters>1?' · '+d.counters+' counters':''}`;
+    document.getElementById('d-queue').textContent=(d.queue&&d.queue.length)?('Then: '+d.queue.map(q=>q.location).join(' → ')):'';
+  }
+  // while a location is being counted the card shrinks to one line so the step cards stay on top
+  card.classList.toggle('mini',!!flow.location);
+}
+function skipDirective(){ if(!directive||!directive.location)return; skipList.push(directive.location); flash('warn','Skipped '+directive.location+' — it will be offered again at the end.'); loadDirective(true); }
+async function loadRecentScans(){
+  if(!session)return;
+  const {data}=await sb.from('scanned_records').select('*').eq('session_id',session.id).order('created_at',{ascending:false}).limit(50);
+  const tb=document.querySelector('#rec-tbl tbody');tb.innerHTML='';
+  (data||[]).forEach(r=>tb.insertAdjacentHTML('beforeend',
+    `<tr><td class="mono">${r.location}</td><td class="mono">${r.pallet_tag||'—'}</td><td class="mono">${r.case_number||'—'}</td><td class="mono">${r.sku}</td><td>${r.quantity}</td><td class="small">${r.counter||''}</td><td><span class="del" onclick="delScan(${r.id})">✕</span></td></tr>`));
+  const {count}=await sb.from('scanned_records').select('*',{count:'exact',head:true}).eq('session_id',session.id);
+  document.getElementById('rec-count').textContent=(count||0);
+  const last=(data||[])[0],rl=document.getElementById('rec-last');
+  if(rl)rl.innerHTML=last?`Last: <span class="mono">${last.case_number||last.pallet_tag||last.location}</span> · SKU <span class="mono">${last.sku||'—'}</span> × ${last.quantity}`:'No scans yet on this count.';
+}
+async function delScan(id){await sb.from('scanned_records').delete().eq('id',id);loadRecentScans();}
+async function addScan(location,pallet,caseNo,sku,qty,src){
+  const {error}=await sb.from('scanned_records').insert({session_id:session.id,location,pallet_tag:pallet||'',case_number:caseNo||'',sku:String(sku||''),quantity:+qty||0,src,counter:counter(),device_id:deviceId()});
+  if(error)flash('bad','Save failed: '+error.message);
+}
+
+/* ---------- snapshot lookups (on demand) ---------- */
+async function snapByPallet(tag){const {data}=await sb.from('wms_snapshot_rows').select('case_number,sku,quantity').eq('session_id',session.id).eq('pallet_tag',tag);return data||[];}
+async function snapByCase(cn){const {data}=await sb.from('wms_snapshot_rows').select('sku,quantity,location').eq('session_id',session.id).eq('case_number',cn);return data||[];}
+async function snapLocation(loc){const {data}=await sb.from('wms_snapshot_rows').select('pallet_tag,case_number,sku,quantity').eq('session_id',session.id).eq('location',loc).limit(2000);return data||[];}
+
+/* ---------- flow ---------- */
+function showMulti(ids){STEPS.forEach(s=>document.getElementById(s).classList.toggle('hidden',!ids.includes(s)));
+  // When the pallet question is being skipped for this location, the Case card is the
+  // location's "home" card, so it carries the Location Count Complete control.
+  const f=document.getElementById('case-avail-finish');if(f)f.classList.toggle('hidden',!(flow.noPallet&&ids.includes('s-case-avail')));}
+function crumbs(){const c=document.getElementById('crumbs');const p=[];
+  if(flow.location)p.push(`<span class="crumb">Loc <b>${flow.location}</b></span>`);
+  if(flow.noPallet&&!flow.pallet)p.push(`<span class="crumb">Pallet <b>none</b> · <a href="#" onclick="askPalletAgain();return false" style="color:var(--muted)">change</a></span>`);
+  if(flow.pallet)p.push(`<span class="crumb">Pallet <b>${flow.pallet}</b>${flow.palletOpen===true?' · open':flow.palletOpen===false?' · closed':''}${flow.mixedSku?' · mixed':''}</span>`);
+  if(flow.case)p.push(`<span class="crumb">Case <b>${flow.case}</b>${flow.caseOpen===true?' · open':flow.caseOpen===false?' · closed':''}</span>`);
+  if(flow.unx){const u=flow.unx;p.push(`<span class="crumb unx">⛔ Unexpected ${u.kind} <b>${u.val}</b>${u.pallet&&u.kind!=='pallet'?' · plt '+u.pallet:''}${u.case&&u.kind!=='case'?' · case '+u.case:''}</span>`);}
+  c.innerHTML=p.join('');}
+function afterShow(id){document.getElementById(id).classList.remove('hidden');const el=document.querySelector('#'+id+' input.scan');if(el){el.value='';setTimeout(()=>el.focus(),30);}}
+function resetFlow(){flow={};eachBuf={};document.getElementById('crumbs').innerHTML='';document.getElementById('loc-info').classList.add('hidden');document.getElementById('loc-blocked').classList.add('hidden');showMulti(['s-location']);const el=document.getElementById('in-location');if(el){el.value='';el.focus();}renderDirective();}
+/* A location is counted once. Completed → hard stop (only the office can Recount from the
+   Dashboard). Being counted on another scanner → stop, with a Take-over for a dead handheld. */
+function showBlocked(loc,res){
+  flow={blockedLoc:loc};document.getElementById('crumbs').innerHTML='';document.getElementById('loc-info').classList.add('hidden');
+  STEPS.forEach(s=>document.getElementById(s).classList.add('hidden'));
+  const when=res.at?new Date(res.at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+  const g=id=>document.getElementById(id);
+  g('lb-loc').textContent=loc;
+  if(res.reason==='complete'){
+    g('lb-title').textContent='⛔ Location already counted';
+    g('lb-who').textContent='Count Complete by '+(res.counter||'another counter')+(when?' · '+when:'');
+    g('lb-hint').textContent='This location cannot be counted a second time from the scanner. If it needs a recount, the office issues one from the Dashboard (Recount), which clears the first count and puts the location back on the list.';
+    g('lb-takeover').classList.add('hidden'); g('lb-recount').classList.toggle('hidden',SCANNER);
+  }else{
+    g('lb-title').textContent='⚠ Location being counted right now';
+    g('lb-who').textContent='Started by '+(res.counter||'another counter')+(when?' · '+when:'')+' on another scanner';
+    g('lb-hint').textContent='Pick a different location (follow your Next location). Use Take over only if that scanner died or the counter walked away — it moves the location to you without clearing their scans.';
+    g('lb-takeover').classList.remove('hidden'); g('lb-recount').classList.add('hidden');
+  }
+  g('loc-blocked').classList.remove('hidden'); g('in-location').value='';
+}
+async function takeOverLocation(){const loc=flow.blockedLoc;if(!loc)return;const ok=await confirmYesNo('Take over '+loc+'? The other scanner will no longer be able to finish it.');if(!ok)return;await onLocation(loc,true);}
+/* Restart Location: wipes what THIS location has so far (scans + claim) and starts it over.
+   Refused once the location is Count Complete — that is an admin Recount. */
+async function restartLocation(){
+  const loc=flow.location;
+  if(!loc){resetFlow();return;}
+  const ok=await confirmYesNo('Restart '+loc+'? Everything scanned at this location so far on '+session.count_id+' will be cleared and you start it again.');
+  if(!ok)return;
+  const {data,error}=await sb.rpc('restart_location',{p_session:session.id,p_location:loc,p_device:deviceId()});
+  if(error){flash('bad','Restart failed: '+error.message);return;}
+  if(!data.ok){resetFlow();showBlocked(loc,data);return;}
+  resetFlow();flash('warn','Location '+loc+' cleared ('+(data.deleted||0)+' scan line'+(data.deleted===1?'':'s')+' removed). Scan it again from the start.');loadRecentScans();
+}
+function cancelStep(){if(flow.opReturn&&flow.pallet){const cs=flow.case;flow.case='';flow.caseOpen=undefined;flow.opReturn=false;eachBuf={};crumbs();showMulti(['s-pallet-cases']);updateOpenPalletProgress();afterShow('s-pallet-cases');flash('warn','Case '+cs+' cancelled — nothing recorded. Back to pallet '+flow.pallet+'.');return;}resetFlow();flash('warn','Cancelled — back to Location.')}
+function norm(s){return (s||'').trim().toUpperCase()}
+function kv(k,v){return `<div class="kv"><span>${k}</span><span>${v}</span></div>`}
+
+async function onLocation(val,force){val=norm(val);if(!val)return;
+  // claim it first: refused if already Count Complete, or in progress on another scanner
+  if(session){
+    const {data:cl,error:ce}=await sb.rpc('claim_location',{p_session:session.id,p_location:val,p_name:counter()||null,p_device:deviceId(),p_force:!!force});
+    if(ce){flash('bad','Could not claim location: '+ce.message);return;}
+    if(!cl.ok){showBlocked(val,cl);return;}
+    if(SCANNER&&ctype()&&cl.counter_type&&cl.counter_type!==ctype())flash('warn',val+' is a '+(cl.counter_type==='lift'?'Lift':'Floor')+' location and you are on the '+(ctype()==='lift'?'Lift':'Floor')+' count — recording it anyway.');
+    else if(SCANNER&&directive&&directive.location&&directive.location!==val)flash('warn','Not the directed location ('+directive.location+') — recording '+val+' anyway.');
+  }
+  flow={location:val};crumbs();document.getElementById('loc-blocked').classList.add('hidden');renderDirective();
+  const rows=await snapLocation(val);flow.snap=rows;const info=document.getElementById('loc-info');info.classList.remove('snap');
+  if(rows.length){const cases=new Set(rows.filter(r=>r.case_number).map(r=>r.case_number));const pallets=new Set(rows.filter(r=>r.pallet_tag).map(r=>r.pallet_tag));const qty=rows.reduce((a,r)=>a+ (+r.quantity||0),0);
+    info.classList.add('snap'); // admin-only: scanner mode hides expected counts (blind count)
+    info.innerHTML='<div class="step-title">WMS snapshot at this location</div>'+kv('Pallet Tags',[...pallets].join(', ')||'—')+kv('Cases',cases.size)+kv('SKUs',new Set(rows.map(r=>r.sku)).size)+kv('Total Qty',qty);
+  }else if(session&&session.scope_type&&session.scope_type!=='whole_customer'){
+    // Scoped count: a location with no snapshot rows is almost certainly OUTSIDE the scope,
+    // not a mislocation. Everything scanned here will reconcile as "unexpected" and closed
+    // cases will have no WMS quantity — say so loudly before the counter starts.
+    const sv=(session.scope_values||[]).join(', ');
+    info.innerHTML=`<div class="flash bad" style="margin:0"><b>⚠ ${val} is OUTSIDE this count's scope.</b><br>${session.count_id} is scoped to <b>${session.scope_type}</b>: <span class="mono">${sv||'—'}</span>. Nothing at this location is in the WMS snapshot, so every scan here will show as <i>unexpected</i> and closed cases will need a manual quantity.<br><b>If this location should be counted, create a new count whose scope includes it.</b> Continue only if you intend to record it as found-stock.</div>`;
+  }else info.innerHTML='<div class="flash warn" style="margin:0">Location not in snapshot — counting as-is (possible mislocation).</div>';
+  info.classList.remove('hidden');showMulti(['s-pallet-avail']);}
+// Pallet Tag available = "No" is remembered for the rest of this location:
+// every later item at the location skips straight to the Case question.
+// The flag is cleared when the location is reset (new location, cancel,
+// Location Count Complete, or Recount) or via the crumb's "change" link.
+function answerPalletAvail(yes){if(yes){flow.noPallet=false;showMulti(['s-pallet-scan']);afterShow('s-pallet-scan');}else{flow.noPallet=true;showMulti(['s-case-avail']);}crumbs();}
+function askPalletAgain(){flow.noPallet=false;crumbs();showMulti(['s-pallet-avail']);}
+async function onPallet(val){val=norm(val);if(!val)return;flow.pallet=val;flow.mixedSku=false;crumbs();
+  // Unexpected pallet: the tag is not in WMS at THIS location (unknown, or mislocated from elsewhere)
+  if(!palletAtLoc(val))return raiseUnexpected('pallet',val,{});
+  const rows=await snapByPallet(val);
+  {const skus=new Set(rows.map(r=>r.sku));if(skus.size>1){flow.mixedSku=true;flash('warn','⚠ Mixed SKU Pallet — '+skus.size+' SKUs on '+val+'. Treating as open: scan each case.');return answerPalletOpen(true);}}
+  showMulti(['s-pallet-open']);}
+async function answerPalletOpen(open){flow.palletOpen=open;crumbs();
+  if(open){flow.palletCasesSeen=new Set();showMulti(['s-pallet-cases']);updateOpenPalletProgress();afterShow('s-pallet-cases');}
+  else{const rows=await snapByPallet(flow.pallet);const skus=[...new Set(rows.map(r=>r.sku))];
+    document.getElementById('pallet-preview').innerHTML=rows.length?(SCANNER?`WMS SKU: <b class="mono">${skus.join(', ')}</b> — verify SKU, then Record.`:`WMS: ${rows.length} case(s), SKU(s): ${skus.join(', ')} — verify SKU, then Record.`):'No WMS data for this pallet; SKU will still be recorded.';
+    showMulti(['s-pallet-sku']);afterShow('s-pallet-sku');}}
+async function commitClosedPallet(){let sku=norm(document.getElementById('in-pallet-sku').value);if(!sku){flash('bad','Scan the SKU first.');return;}sku=await resolveToSku(sku);
+  const rows=(await snapByPallet(flow.pallet)).filter(r=>String(r.sku)===sku);
+  if(rows.length){for(const r of rows)await addScan(flow.location,flow.pallet,r.case_number,r.sku,r.quantity,'wms-pallet');flash('ok',`Recorded ${rows.length} case(s) on ${flow.pallet} — SKU ${sku}.`);}
+  else return raiseUnexpected('sku',sku,{pallet:flow.pallet}); // SKU on the pallet is not what WMS has on it → count every unit
+  nextItem();}
+// Open pallet: each case scans, then the counter says whether THAT case is open.
+// Closed -> record the WMS rows for the case (src wms-case), exactly as before.
+// Open   -> each-count the units inside; the pallet and case are carried on every line,
+//           then control returns to the open-pallet case list and the progress counter.
+async function onOpenPalletCase(val){val=norm(val);if(!val)return;
+  if(!caseAtLoc(val))return raiseUnexpected('case',val,{pallet:flow.pallet,returnTo:'open-pallet'});
+  flow.case=val;flow.caseOpen=undefined;crumbs();
+  const rows=await snapByCase(val);const skus=[...new Set(rows.map(r=>r.sku))];
+  document.getElementById('opc-hint').innerHTML=`Case <b class="mono">${val}</b> on pallet <b class="mono">${flow.pallet}</b>`+(rows.length?` — WMS SKU <b class="mono">${skus.join(', ')}</b>${SCANNER?'':' × '+rows.reduce((a,r)=>a+(+r.quantity||0),0)}`:'')+`.<br>Closed = sealed (record the WMS quantity). Open = partial, scan each unit inside.`;
+  showMulti(['s-opc-open']);
+  const b=document.querySelector('#s-opc-open button');if(b)setTimeout(()=>b.focus(),30);}
+async function answerOpenPalletCaseOpen(open){const cs=flow.case;flow.caseOpen=open;crumbs();
+  if(open){flow.opReturn=true;startEaches('Open Case '+cs+' · on pallet','Scan each unit (SKU or UPC) inside the case.','✓ Case Count Complete');return;}
+  const rows=await snapByCase(cs);
+  if(rows.length){for(const r of rows)await addScan(flow.location,flow.pallet,cs,r.sku,r.quantity,'wms-case');flash('ok',SCANNER?`Case ${cs} recorded.`:`Case ${cs} recorded (${rows.reduce((a,r)=>a+(+r.quantity||0),0)} units).`);}
+  returnToOpenPallet(cs);}
+function returnToOpenPallet(cs){flow.case='';flow.caseOpen=undefined;flow.opReturn=false;eachBuf={};
+  if(cs)flow.palletCasesSeen.add(cs);crumbs();showMulti(['s-pallet-cases']);updateOpenPalletProgress();afterShow('s-pallet-cases');}
+async function updateOpenPalletProgress(){const rows=await snapByPallet(flow.pallet);const exp=new Set(rows.map(r=>r.case_number).filter(Boolean));document.getElementById('open-pallet-progress').textContent=`Scanned ${flow.palletCasesSeen.size}${(exp.size&&!SCANNER)?(' of '+exp.size+' expected'):''} case(s). Scan next, or Pallet Count Complete.`;}
+function answerCaseAvail(yes){if(yes){flow.noCase=false;showMulti(['s-case-scan']);afterShow('s-case-scan');}else{flow.noCase=true;startEaches('Each-Only Location — '+flow.location,'Verify each-only location, then scan each unit.','✓ Count Complete');}}
+async function onCase(val){val=norm(val);if(!val)return;flow.case=val;crumbs();
+  if(!caseAtLoc(val))return raiseUnexpected('case',val,{pallet:flow.pallet});
+  showMulti(['s-case-open']);}
+async function answerCaseOpen(open){flow.caseOpen=open;crumbs();
+  if(open)startEaches('Open Case '+flow.case,'Scan each unit (SKU or UPC) inside the case.','✓ Case Count Complete');
+  else{const rows=await snapByCase(flow.case);const skus=[...new Set(rows.map(r=>r.sku))];
+    document.getElementById('case-preview').innerHTML=SCANNER?`WMS SKU: <b class="mono">${skus.join(', ')}</b> — verify SKU, then Record.`:`WMS: SKU ${skus.join(', ')} × ${rows.reduce((a,r)=>a+(+r.quantity||0),0)} — verify SKU, then Record.`;
+    showMulti(['s-case-sku']);afterShow('s-case-sku');}}
+async function commitClosedCase(){let sku=norm(document.getElementById('in-case-sku').value);if(!sku){flash('bad','Scan the SKU first.');return;}sku=await resolveToSku(sku);
+  const rows=(await snapByCase(flow.case)).filter(r=>String(r.sku)===sku);
+  if(rows.length){for(const r of rows)await addScan(flow.location,'',flow.case,r.sku,r.quantity,'wms-case');flash('ok',SCANNER?`Case ${flow.case} recorded — SKU ${sku}.`:`Case ${flow.case} recorded — SKU ${sku} × ${rows.reduce((a,r)=>a+(+r.quantity||0),0)}.`);}
+  else return raiseUnexpected('sku',sku,{case:flow.case,pallet:flow.pallet}); // SKU in the case is not what WMS has in it → count every unit
+  nextItem();}
+function startEaches(title,sub,btn){eachBuf={};document.getElementById('in-each').placeholder=flow.unx?'Scan each unit':'Scan unit — or 186399*12';document.getElementById('s-eaches').classList.toggle('unx',!!flow.unx);document.getElementById('eaches-title').textContent=title;document.getElementById('eaches-sub').innerHTML=sub+' Each scan = +1, or type <code>SKU*QTY</code>.';document.getElementById('btn-eaches-done').textContent=btn||'✓ Count Complete';renderEach();showMulti(['s-eaches']);afterShow('s-eaches');}
+// Resolve a scanned code to a SKU: if it is already a snapshot SKU keep it;
+// otherwise translate a UPC -> SKU via the product master (products table).
+async function resolveToSku(code){
+  code=norm(code); if(!code)return code;
+  const {data:sHit}=await sb.from('wms_snapshot_rows').select('sku').eq('session_id',session.id).eq('sku',code).limit(1);
+  if(sHit&&sHit.length)return code;
+  const vId=session&&session.customer?session.customer.vendor_id:null;
+  let pq=sb.from('products').select('sku').eq('upc',code);
+  if(vId!=null)pq=pq.eq('vendor_id',vId);           // same UPC/SKU is reused across customers
+  const {data:pHit}=await pq.limit(1);
+  if(pHit&&pHit.length&&pHit[0].sku)return pHit[0].sku;
+  return code;
+}
+async function onEach(val){val=norm(val);if(!val)return;let code=val,qty=1;const m=val.match(/^(.+?)[*x](\d+)$/i);if(m){code=norm(m[1]);qty=+m[2];}
+  const sku=await resolveToSku(code); if(sku!==code)flash('ok','UPC '+code+' -> SKU '+sku);
+  // Normal each count: a SKU that WMS does not have at this location is UNEXPECTED. The counter
+  // must acknowledge it; the unit then counts (location/pallet/case are already known here) and
+  // its line is recorded as unexpected. Inside the unexpected-stock flow everything is unexpected.
+  if(!flow.unx&&!skuAtLoc(sku)&&!(flow.unxSkus&&flow.unxSkus.has(sku))){
+    flow.unxSkus=flow.unxSkus||new Set();flow.unxSkus.add(sku);
+    const locs=await whereInWms('sku',sku);
+    await okModal(`⛔ UNEXPECTED SKU\n\n${sku} is not in WMS at ${flow.location}${flow.case?' (case '+flow.case+')':''}.\n`+(locs.length?`WMS has this SKU at: ${locs.slice(0,3).join(', ')}${locs.length>3?' +'+(locs.length-3)+' more':''}.`:'WMS has no record of this SKU in this count.')+`\n\nTap OK, then keep scanning — one scan per unit present. Its units are recorded as unexpected stock.`);
+  }
+  eachBuf[sku]=(eachBuf[sku]||0)+qty;renderEach();const el=document.getElementById('in-each');el.value='';el.focus();}
+function renderEach(){const tb=document.querySelector('#each-tbl tbody');tb.innerHTML='';let tot=0;Object.entries(eachBuf).forEach(([s,q])=>{tot+=q;const ux=!!flow.unx||(flow.unxSkus&&flow.unxSkus.has(s));tb.insertAdjacentHTML('beforeend',`<tr${ux?' class="unx"':''}><td class="mono">${s}${ux?' <span class="pill unexpected">unexpected</span>':''}</td><td>${q}</td><td><span class="del" onclick="delEach('${s.replace(/'/g,'')}')">✕</span></td></tr>`);});document.getElementById('eaches-count').textContent=tot;}
+function delEach(s){delete eachBuf[s];renderEach();}
+async function commitEaches(){const e=Object.entries(eachBuf);
+  if(flow.unx)return commitUnexpected();
+  if(!e.length){ if(flow.opReturn){flash('warn',`No units recorded for open case ${flow.case} — back to pallet ${flow.pallet}.`);return returnToOpenPallet(flow.case);} return nextItem(); }
+  let ux=0;for(const [sku,q] of e){const isU=flow.unxSkus&&flow.unxSkus.has(sku);if(isU)ux++;await addScan(flow.location,flow.pallet||'',flow.case||'',sku,q,isU?'unexpected':'scan-each');}
+  flash(ux?'warn':'ok',`Recorded ${e.length} SKU line(s)${ux?' — '+ux+' unexpected':''}${flow.opReturn?' — open case '+flow.case+' on pallet '+flow.pallet:''}.`);
+  if(flow.opReturn)return returnToOpenPallet(flow.case);
+  nextItem();}
+// Mark a location Count Complete (idempotent). Uncounted WMS lines at a
+// completed location become confirmed shortages (variance) in reconciliation.
+async function markLocationComplete(location){
+  if(!session||!location)return false;
+  // server-side: upsert location_status + release the claim, so the location drops off every directive list at once
+  const {error}=await sb.rpc('complete_location',{p_session:session.id,p_location:location,p_name:counter()||null,p_device:deviceId()});
+  if(error){flash('bad','Mark complete failed: '+error.message);return false;}
+  return true;
+}
+function nextItem(){const loc=flow.location,noPallet=!!flow.noPallet,snap=flow.snap;flow={location:loc,noPallet,snap};eachBuf={};crumbs();showMulti([noPallet?'s-case-avail':'s-pallet-avail']);}
+async function finishLocation(){const loc=flow.location;if(!loc)return;const ok=await markLocationComplete(loc);if(!ok)return;resetFlow();
+  flash('ok','Location '+loc+' marked Count Complete.'+(SCANNER?' Follow the Next location card.':' Scan next location.'));
+  loadDirective();if(!document.getElementById('view-dash').classList.contains('hidden'))refreshDash();}
+
+
+/* ---------- unexpected stock ----------
+   "Unexpected" = a Pallet Tag, Case LPN or SKU that WMS does not have at THIS location
+   (either unknown to the snapshot, or mislocated from another location). The counter gets a
+   blocking error and must tap OK. The location is carried forward; the app then asks for the
+   Pallet Tag (if applicable), Case LPN (if applicable) and SKU, and the counter scans every
+   unit present — one scan per unit. Lines are saved with src='unexpected'. */
+function locSnap(){return flow.snap||[];}
+function palletAtLoc(tag){return locSnap().some(r=>(r.pallet_tag||'')===tag);}
+function caseAtLoc(cn){return locSnap().some(r=>(r.case_number||'')===cn);}
+function skuAtLoc(sku){return locSnap().some(r=>String(r.sku)===String(sku));}
+async function whereInWms(field,val){const {data}=await sb.from('wms_snapshot_rows').select('location').eq('session_id',session.id).eq(field,val).limit(200);return [...new Set((data||[]).map(r=>r.location))].sort();}
+function okModal(msg){return new Promise(res=>{const ov=document.getElementById('modal-ov');ov.classList.add('ok-only');document.getElementById('modal-msg').textContent=msg;document.getElementById('modal-msg').style.whiteSpace='pre-line';ov.classList.remove('hidden');const yes=document.getElementById('modal-yes');const prev=yes.textContent;yes.textContent='OK';yes.onclick=()=>{ov.classList.add('hidden');ov.classList.remove('ok-only');yes.textContent=prev;yes.onclick=null;document.getElementById('modal-msg').style.whiteSpace='';res(true);};yes.focus();});}
+const UNX_LABEL={pallet:'Pallet Tag',case:'Case LPN',sku:'SKU'};
+async function raiseUnexpected(kind,val,ctx){
+  const g=id=>document.getElementById(id);
+  const field=kind==='pallet'?'pallet_tag':kind==='case'?'case_number':'sku';
+  const locs=await whereInWms(field,val);
+  const u={kind,val,pallet:ctx.pallet||'',case:ctx.case||'',sku:ctx.sku||'',returnTo:ctx.returnTo||'',noPallet:!!flow.noPallet&&!ctx.pallet,noCase:false,elsewhere:locs};
+  if(kind==='pallet')u.pallet=val; if(kind==='case')u.case=val; if(kind==='sku')u.sku=val;
+  if(kind==='sku'&&!u.case&&flow.noCase)u.noCase=true;
+  flow.unx=u;eachBuf={};crumbs();
+  const lbl=UNX_LABEL[kind];
+  g('u-ack-title').textContent='⛔ Unexpected '+lbl;
+  g('u-ack-what').innerHTML=`<span class="mono">${val}</span> is not in WMS at <span class="mono">${flow.location}</span>.`;
+  g('u-ack-why').innerHTML=locs.length?`WMS has this ${lbl.toLowerCase()} at <b class="mono">${locs.slice(0,3).join(', ')}${locs.length>3?' +'+(locs.length-3)+' more':''}</b> — it has been moved or mislocated.`:`WMS has no record of this ${lbl.toLowerCase()} anywhere in count ${session.count_id}.`;
+  const steps=[];if(!u.pallet&&!u.noPallet)steps.push('Pallet Tag');if(!u.case&&!u.noCase)steps.push('Case LPN');if(!u.sku)steps.push('SKU');steps.push('every unit present — one scan per unit');
+  g('u-ack-next').innerHTML=`<b>Next:</b> location <span class="mono">${flow.location}</span> is carried forward. You will scan: ${steps.join(' → ')}. Nothing is copied from WMS for unexpected stock.`;
+  showMulti(['u-ack']);
+  const b=document.querySelector('#u-ack button');if(b)setTimeout(()=>b.focus(),30);
+}
+function ackUnexpected(){unxNext();}
+function unxNext(){const u=flow.unx;if(!u)return resetFlow();
+  if(!u.pallet&&!u.noPallet){showMulti(['u-pallet']);afterShow('u-pallet');return;}
+  if(!u.case&&!u.noCase){document.getElementById('u-pallet-done').classList.toggle('hidden',!u.recorded);document.getElementById('u-case-hint').textContent=u.pallet?('On pallet '+u.pallet+(u.recorded?' · '+u.recorded+' case(s) recorded so far':'')):'';showMulti(['u-case']);afterShow('u-case');return;}
+  if(!u.sku){showMulti(['u-sku']);afterShow('u-sku');return;}
+  startEaches('Unexpected stock · '+u.sku,'Scan <b>every unit</b> of '+u.sku+' present — one scan per unit.','✓ Record unexpected stock');
+  document.getElementById('eaches-sub').innerHTML='Scan <b>every unit</b> present — one scan per unit. Location <span class="mono">'+flow.location+'</span>'+(u.pallet?' · pallet <span class="mono">'+u.pallet+'</span>':'')+(u.case?' · case <span class="mono">'+u.case+'</span>':'')+'.';
+  crumbs();}
+function onUnxPallet(v){v=norm(v);if(!v)return;flow.unx.pallet=v;flow.unx.noPallet=false;crumbs();unxNext();}
+function unxNoPallet(){flow.unx.noPallet=true;unxNext();}
+function onUnxCase(v){v=norm(v);if(!v)return;flow.unx.case=v;flow.unx.noCase=false;crumbs();unxNext();}
+function unxNoCase(){flow.unx.noCase=true;unxNext();}
+function unxPalletDone(){const u=flow.unx;flash('warn','Unexpected pallet '+u.pallet+' recorded — '+(u.recorded||0)+' case(s).');nextItem();}
+async function onUnxSku(v){v=norm(v);if(!v)return;const sku=await resolveToSku(v);if(sku!==v)flash('ok','UPC '+v+' -> SKU '+sku);flow.unx.sku=sku;crumbs();unxNext();}
+async function commitUnexpected(){const u=flow.unx;const e=Object.entries(eachBuf);
+  if(!e.length){flash('bad','Scan at least one unit — or Cancel if nothing is there.');document.getElementById('in-each').focus();return;}
+  for(const [sku,q] of e)await addScan(flow.location,u.pallet||'',u.case||'',sku,q,'unexpected');
+  const units=e.reduce((a,[,q])=>a+q,0);
+  flash('warn',`Unexpected stock recorded at ${flow.location}: ${units} unit(s)${u.case?' · case '+u.case:''}${u.pallet?' · pallet '+u.pallet:''}.`);
+  eachBuf={};
+  if(u.returnTo==='open-pallet'){flow.unx=null;flow.palletCasesSeen.add(u.case);crumbs();showMulti(['s-pallet-cases']);updateOpenPalletProgress();afterShow('s-pallet-cases');return;}
+  if(u.pallet){u.recorded=(u.recorded||0)+1;u.case='';u.noCase=false;u.sku='';crumbs();unxNext();return;} // more cases on this pallet → Case LPN again, or Pallet done
+  nextItem();}
+
+/* ---------- dashboard ---------- */
+let dashTimer=null;function debouncedDash(){clearTimeout(dashTimer);dashTimer=setTimeout(loadReconDetail,350);}
+async function refreshDash(){await loadReconSummary();await loadReconDetail();}
+/* Scorecard — two rows, from v_dashboard_summary (server-side, one row per count).
+   Row 1: what has been counted.  Row 2: LOCATION-level results — a location is
+   Matched only when every line at it matches; any short/over line makes the whole
+   location a Variance; any pallet/case/SKU not in WMS at that location makes it
+   Unexpected (Unexpected wins when both are present, so the buckets never double
+   count). Row 2 is computed over COMPLETED locations only. */
+async function loadReconSummary(){
+  const {data,error}=await sb.from('v_dashboard_summary').select('*').eq('session_id',session.id).maybeSingle();
+  if(error)flash('bad','Dashboard summary: '+error.message);
+  const s=data||{};const n=k=>+s[k]||0;const f=k=>n(k).toLocaleString();
+  const pct=n('pct_locations_complete'),acc=n('location_accuracy_pct');
+  document.getElementById('dash-tiles').innerHTML=
+    tile('info',f('pallets_counted'),'Pallets Counted')+tile('info',f('cartons_counted'),'Cartons Counted')+tile('info',f('eaches_counted'),'Eaches Counted')+
+    tile('info',f('total_locations'),'Locations to Count')+tile('info',f('completed_locations'),'Locations Completed')+
+    tile(pct>=100?'ok':pct>=50?'warn':'info',pct.toFixed(1)+'%','Locations Complete');
+  document.getElementById('dash-tiles-loc').innerHTML=
+    tile('ok',f('matched_locations'),'Matched')+tile('warn',f('variance_locations'),'Variance')+tile('bad',f('unexpected_locations'),'Unexpected')+
+    tile(acc>=98?'ok':acc>=90?'warn':'bad',acc.toFixed(1)+'%','Location Accuracy',n('completed_locations')?'of '+f('completed_locations')+' completed':'no locations completed yet')+
+    tile(n('recount_locations')?'bad':'ok',f('recount_locations'),'To Recount','variance + unexpected');
+  // directive progress per count type (who is counting, how far along)
+  const {data:dp}=await sb.from('v_directive_progress').select('*').eq('session_id',session.id);
+  let el=document.getElementById('dash-directive');
+  if(!el){el=document.createElement('div');el.id='dash-directive';el.className='small';el.style.margin='-4px 0 12px';document.querySelector('.tile-row.r2').insertAdjacentElement('afterend',el);}
+  el.innerHTML=(dp||[]).filter(r=>+r.total>0).map(r=>`<b>${r.counter_type==='lift'?'Lift':'Floor'} count:</b> ${r.done}/${r.total} locations complete${+r.in_progress?' · '+r.in_progress+' in progress':''} · counters: ${r.counters||'<i>none yet</i>'}`).join('<br>')||'';
+}
+async function loadReconDetail(){
+  const filt=document.getElementById('dash-filter').value;const q=document.getElementById('dash-search').value.trim().toUpperCase();
+  if(filt.startsWith('loc:'))return loadLocationDetail(filt==='loc:recount',q);
+  document.querySelector('#dash-tbl thead').innerHTML='<tr><th>Status</th><th>Location</th><th>Pallet Tag</th><th>Case</th><th>SKU</th><th>Product</th><th>WMS</th><th>Counted</th><th>Δ</th><th></th></tr>';
+  let query=sb.from('v_reconciliation').select('*').eq('session_id',session.id);
+  if(filt!=='all')query=query.eq('status',filt);
+  if(q)query=query.or(`location.ilike.%${q}%,case_number.ilike.%${q}%,sku.ilike.%${q}%`);
+  const {data,error}=await query.order('delta',{ascending:true}).limit(500);
+  const tb=document.querySelector('#dash-tbl tbody');tb.innerHTML='';
+  if(error){document.getElementById('dash-note').textContent='Error: '+error.message;return;}
+  (data||[]).forEach(r=>{const d=+r.delta;tb.insertAdjacentHTML('beforeend',
+    `<tr><td><span class="pill ${r.status}">${r.status}</span></td><td class="mono">${r.location}</td><td class="mono">${r.pallet_tag||'—'}</td><td class="mono">${r.case_number||'—'}</td><td class="mono">${r.sku}</td><td>${r.product_name||''}${r.upc?`<div class="small mono">UPC ${r.upc}</div>`:''}</td><td>${r.wms_qty}</td><td>${r.counted_qty}</td><td style="font-weight:700;color:${d===0?'#4ade80':d>0?'#38bdf8':'#f87171'}">${d>0?'+':''}${d}</td><td><button class="btn ghost sm" onclick="recount('${(r.location||'').replace(/'/g,"\\'")}')">↺ Recount</button></td></tr>`);});
+  document.getElementById('dash-note').textContent=`${(data||[]).length} line(s) shown${(data||[]).length>=500?' (first 500 — filter/search to narrow)':''} · count ${session.count_id}`;
+}
+/* location-level list (v_location_recon): the recount worklist, or every location with its status */
+async function loadLocationDetail(recountOnly,q){
+  document.querySelector('#dash-tbl thead').innerHTML='<tr><th>Location status</th><th>Location</th><th>Lines</th><th>Matched</th><th>Variance</th><th>Unexpected</th><th>Uncounted</th><th>WMS</th><th>Counted</th><th></th></tr>';
+  let query=sb.from('v_location_recon').select('*').eq('session_id',session.id);
+  if(recountOnly)query=query.eq('complete',true).in('status',['variance','unexpected']);
+  if(q)query=query.ilike('location','%'+q+'%');
+  const {data,error}=await query.order('status').order('location').limit(500);
+  const tb=document.querySelector('#dash-tbl tbody');tb.innerHTML='';
+  if(error){document.getElementById('dash-note').textContent='Error: '+error.message;return;}
+  (data||[]).forEach(r=>{const st=r.complete?r.status:'open';tb.insertAdjacentHTML('beforeend',
+    `<tr><td><span class="pill ${st==='open'?'counting':st}">${st==='open'?'in progress / not started':st}</span></td><td class="mono">${r.location}</td><td>${r.lines}</td><td>${r.matched_lines}</td><td>${r.variance_lines}</td><td>${r.unexpected_lines}</td><td>${r.uncounted_lines}</td><td>${(+r.wms_qty).toLocaleString()}</td><td>${(+r.counted_qty).toLocaleString()}</td><td><button class="btn ghost sm" onclick="recount('${(r.location||'').replace(/'/g,"\\'")}')">↺ Recount</button></td></tr>`);});
+  document.getElementById('dash-note').textContent=`${(data||[]).length} location(s) shown${recountOnly?' — completed locations with a variance or unexpected stock':''}${(data||[]).length>=500?' (first 500 — search to narrow)':''} · count ${session.count_id}`;
+}
+async function recount(loc){
+  if(!session||!loc)return;
+  if(!confirm('Clear ALL counts for location '+loc+'?\n\nThis deletes every scan recorded at this location for '+session.count_id+' and returns it to Uncounted status. This cannot be undone.'))return;
+  const {error}=await sb.from('scanned_records').delete().eq('session_id',session.id).eq('location',loc);
+  if(error){flash('bad','Recount failed: '+error.message);return;}
+  // also clear the Count Complete flag (and any scanner claim) so the location returns to
+  // Uncounted and reappears on the handhelds' directive lists
+  await sb.from('location_status').delete().eq('session_id',session.id).eq('location',loc);
+  await sb.from('location_claims').delete().eq('session_id',session.id).eq('location',loc);
+  flash('ok','Recount issued for '+loc+' — it is back on the counters’ Next-location lists.');
+  if(flow.blockedLoc===loc)resetFlow();
+  if(!document.getElementById('view-dash').classList.contains('hidden'))refreshDash();
+}
+function tile(cls,n,l,sub){return `<div class="tile ${cls}"><div class="n">${n}</div><div class="l">${l}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`}
+
+/* ---------- exports ---------- */
+async function fetchAll(table,sel){const out=[];let from=0;const step=1000;while(true){const {data,error}=await sb.from(table).select(sel).eq('session_id',session.id).range(from,from+step-1);if(error){flash('bad','Export: '+error.message);break;}out.push(...(data||[]));if(!data||data.length<step)break;from+=step;}return out;}
+function csvEsc(v){v=(v==null?'':String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function toCSV(rows,cols){return cols.join(',')+'\n'+rows.map(r=>cols.map(c=>csvEsc(r[c])).join(',')).join('\n');}
+function dlCSV(name,text){const b=new Blob([text],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+async function exportRecon(){if(!session)return;flash('ok','Preparing reconciliation export…');const cols=['status','location','pallet_tag','case_number','sku','product_name','upc','wms_qty','counted_qty','delta'];const rows=await fetchAll('v_reconciliation',cols.join(','));dlCSV(session.count_id+'_reconciliation.csv',toCSV(rows,cols));flash('ok','Exported '+rows.length+' reconciliation lines to CSV.');}
+async function exportScans(){if(!session)return;flash('ok','Preparing scans export…');const cols=['location','pallet_tag','case_number','sku','quantity','counter','device_id','created_at'];const rows=await fetchAll('scanned_records',cols.join(','));dlCSV(session.count_id+'_scans.csv',toCSV(rows,cols));flash('ok','Exported '+rows.length+' scan records to CSV.');}
+
+/* ---------- wire up ---------- */
+function bind(id,fn){const el=document.getElementById(id);el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fn(el.value);}});}
+bind('in-location',onLocation);bind('in-pallet',onPallet);bind('in-pallet-sku',()=>commitClosedPallet());
+bind('in-open-pallet-case',onOpenPalletCase);bind('in-case',onCase);bind('in-case-sku',()=>commitClosedCase());bind('in-each',onEach);bind('in-u-pallet',onUnxPallet);bind('in-u-case',onUnxCase);bind('in-u-sku',onUnxSku);bind('in-counter',()=>saveCounterInline());
+document.getElementById('nc-scope').addEventListener('change',e=>{document.getElementById('nc-scopeval').classList.toggle('hidden',e.target.value==='whole_customer');});
+
+document.getElementById('build-date').textContent=new Date().toISOString().slice(0,10);
+applyTheme(localStorage.getItem('pc_theme')||'dark');
+(async()=>{
+  try{
+    if(SCANNER){ if(await restoreSession()) await checkRegistered(); document.getElementById('conn-state').textContent='connected'; updateBadges(); setView('scan'); return; }
+    await loadRefLists(); await nextCountNum(); previewName(); await loadTower(); await restoreSession(); document.getElementById('conn-state').textContent='connected';
+  }
+  catch(e){ document.getElementById('conn-state').textContent='offline'; flash('bad','Supabase connection issue: '+e.message); }
+  updateBadges();
+})();
+</script>
+</body>
+</html>
