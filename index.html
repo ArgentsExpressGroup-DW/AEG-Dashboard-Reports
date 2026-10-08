@@ -1,0 +1,1705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Contare — Argents WMS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0f172a;--panel:#1e293b;--panel2:#273449;--line:#334155;--txt:#e2e8f0;--muted:#94a3b8;
+  --brand:#2563eb;--ok:#16a34a;--okbg:#052e16;--warn:#d97706;--warnbg:#3a2708;--bad:#dc2626;--badbg:#3b0d0d;--accent:#38bdf8;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:16px}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+header h1{font-size:16px;margin:0;font-weight:700}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.badge.ok{color:#bbf7d0;background:var(--okbg);border-color:#166534}
+.badge.warn{color:#fde68a;background:var(--warnbg);border-color:#92400e}
+.spacer{flex:1}
+.tabs{display:flex;gap:6px}
+.tab{padding:8px 14px;border-radius:8px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);cursor:pointer;font-weight:600;font-size:14px}
+.tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+main{max-width:1100px;margin:0 auto;padding:14px}
+.hidden{display:none!important}
+.btn{background:var(--brand);color:#fff;border:none;border-radius:10px;padding:14px 18px;font-size:16px;font-weight:700;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.lg{padding:20px;font-size:20px;width:100%}
+.btn.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+.btn.ok{background:var(--ok)}.btn.warn{background:var(--warn)}.btn.bad{background:var(--bad)}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:8px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+label.fld{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+input.scan{width:100%;padding:16px;font-size:22px;border-radius:10px;border:2px solid var(--brand);background:#0b1220;color:#fff;font-weight:700;letter-spacing:.5px}
+input.t,select.t{width:100%;padding:12px;font-size:16px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:#fff}
+input.scan::placeholder{color:#475569;font-weight:400}
+.step-title{font-size:13px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.q{font-size:22px;font-weight:800;margin:2px 0 14px}
+.yn{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.crumbs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.crumb{font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;color:var(--muted)}
+.crumb b{color:var(--txt)}
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.kv span:first-child{color:var(--muted)}
+.hint{font-size:13px;color:var(--muted);margin-top:8px}
+.flash{padding:10px 14px;border-radius:10px;font-weight:600;margin-bottom:12px;font-size:14px}
+.flash.ok{background:var(--okbg);color:#bbf7d0;border:1px solid #166534}
+.flash.warn{background:var(--warnbg);color:#fde68a;border:1px solid #92400e}
+.flash.bad{background:var(--badbg);color:#fecaca;border:1px solid #7f1d1d}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;background:var(--panel)}
+td.mono,th.mono{font-family:ui-monospace,Menlo,monospace}
+.tbl-wrap{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
+.tile-row{margin-bottom:6px}
+.tile-row .rt{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin:0 0 6px 2px}
+.tile-row .tiles{grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:8px}
+.tile-row.r2 .tiles{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:900px){.tile-row .tiles,.tile-row.r2 .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tile .s{font-size:11px;color:var(--muted);margin-top:4px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.tile .n{font-size:26px;font-weight:800}
+.tile .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.tile.ok .n{color:#4ade80}.tile.warn .n{color:#fbbf24}.tile.bad .n{color:#f87171}.tile.info .n{color:var(--accent)}
+.pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
+.pill.match{background:var(--okbg);color:#bbf7d0}.pill.variance{background:var(--warnbg);color:#fde68a}
+.pill.uncounted{background:var(--badbg);color:#fecaca}.pill.unexpected{background:#1e1b4b;color:#c7d2fe}.pill.entered{background:var(--warnbg);color:#fde68a}
+#btn-enter-count:disabled{opacity:.45;cursor:not-allowed}
+.pill.open{background:#0c4a6e;color:#bae6fd}.pill.counting{background:var(--warnbg);color:#fde68a}.pill.closed{background:var(--panel2);color:var(--muted)}
+.pill.review{background:#0c4a6e;color:#bae6fd}.pill.verified{background:var(--okbg);color:#bbf7d0}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:440px;width:100%}
+.modal-msg{font-size:15px;line-height:1.5;margin-bottom:18px}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end}
+.small{font-size:12px;color:var(--muted)}
+.del{color:#f87171;cursor:pointer;font-weight:700}
+.counter{font-size:52px;font-weight:800;text-align:center;letter-spacing:2px}
+.prog{height:10px;background:#0b1220;border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+.prog>div{height:100%;background:var(--brand);width:0%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.q{font-size:19px}.counter{font-size:42px}.grid2{grid-template-columns:1fr}}
+.footer-note{font-size:11px;color:#475569;text-align:center;padding:20px 0}
+
+/* ---- Contare theme + branding (overrides above) ---- */
+:root{--inbg:#0e0f12;--bg:#141518;--panel:#1d1f24;--panel2:#282b31;--line:#3a3d45;--txt:#e8eaed;--muted:#9aa0a8;--brand:#8b1a3c;--brand2:#6f142f;--accent:#d06e8a}
+[data-theme="light"]{--inbg:#ffffff;--bg:#f4f5f7;--panel:#ffffff;--panel2:#eef0f3;--line:#d9dde3;--txt:#1b1d21;--muted:#5f6670;--brand:#8b1a3c;--brand2:#6f142f;--accent:#8b1a3c}
+body{transition:background .2s,color .2s}
+input.scan,input.t,select.t{background:var(--inbg);color:var(--txt)}
+.prog{background:var(--inbg)}
+input.t::placeholder,input.scan::placeholder{color:var(--muted);opacity:.7}
+input.scan{border-color:var(--brand)}
+.mono{font-family:ui-monospace,Menlo,monospace}
+.btn{background:var(--brand)}.btn.ghost{background:var(--panel2)}
+.tab.active{background:var(--brand);border-color:var(--brand)}
+.flash.ok{background:rgba(22,160,83,.15);color:#1aa053;border-color:rgba(22,160,83,.4)}
+.flash.warn{background:rgba(201,138,30,.15);color:#c98a1e;border-color:rgba(201,138,30,.45)}
+.flash.bad{background:rgba(208,82,82,.15);color:#d05252;border-color:rgba(208,82,82,.45)}
+.pill.match,.pill.verified,.pill.complete{background:rgba(22,160,83,.16);color:#1aa053}
+.pill.variance,.pill.counting{background:rgba(201,138,30,.18);color:#c98a1e}
+.pill.uncounted{background:rgba(208,82,82,.16);color:#d25151}
+.pill.unexpected{background:rgba(120,127,240,.18);color:#7c7ff0}
+.pill.open,.pill.review{background:rgba(74,159,214,.18);color:#4a9fd6}
+.pill.closed,.pill.pending{background:var(--panel2);color:var(--muted)}
+.brand-logo{display:flex;align-items:center;gap:8px}
+.brand-logo .wordmark{font-weight:900;font-style:italic;font-size:18px;letter-spacing:1px;color:var(--brand)}
+.brand-logo svg .b1{fill:var(--txt)}.brand-logo svg .b2{fill:var(--muted)}.brand-logo svg .b3{fill:var(--brand)}
+.appname{font-weight:800;font-size:17px;color:var(--txt);padding-left:10px;border-left:2px solid var(--line)}
+.theme-btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:15px;line-height:1}
+.theme-btn{display:inline-flex;align-items:center;justify-content:center;height:32px}
+/* EN / ES toggle — sits beside the theme switch, same chrome, shows the current language */
+.lang-btn{font-weight:800;font-size:12px;letter-spacing:.6px;padding:0 9px;font-family:inherit;min-width:36px}
+/* ---- per-view widths: Control Tower = desktop-wide, Scanner/Create = mobile-compact ---- */
+main{max-width:100%;margin:0}
+#view-create,#view-scan{max-width:680px;margin:0 auto}
+#view-dash{max-width:1180px;margin:0 auto}
+#view-tower{max-width:1650px;margin:0 auto}
+#view-tower .tbl-wrap{max-height:74vh}
+/* solid sticky table headers while scrolling */
+th{z-index:3;box-shadow:inset 0 -1px 0 var(--line),0 1px 3px rgba(0,0,0,.25)}
+
+/* ---- SCANNER MODE (handhelds: /scan, ?mode=scanner or #scan) ----
+   Same single-file app, one view: the admin header, the four tabs, the WMS
+   snapshot card and every expected quantity are hidden so the counter does a
+   blind count on a 5-inch screen. Admin surface (desktop) is untouched. */
+body.scanner header{padding:6px 10px;gap:6px;flex-wrap:nowrap}
+body.scanner header>.brand-logo,body.scanner .appname,body.scanner .tabs,body.scanner #sessionBadge,body.scanner #counterBadge{display:none!important}
+body.scanner .scan-strip{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.scan-strip{display:none}
+body.scanner header>.spacer{display:none}
+.scan-strip .chip{font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.scan-strip .chip.job{flex:1 1 auto;min-width:0}
+.scan-strip .chip.who{flex:0 0 auto;max-width:34vw}
+.scan-strip .chip.job{color:#1aa053;background:rgba(22,160,83,.16);border-color:rgba(22,160,83,.4)}
+.scan-strip .chip.job.none{color:var(--muted);background:var(--panel2);border-color:var(--line)}
+.scan-strip .chip.who.unset{color:#fde68a;background:rgba(201,138,30,.18);border-color:rgba(201,138,30,.45)}
+.scan-strip .chip.brand{padding:4px 6px;max-width:none;cursor:default}
+body.scanner .theme-btn{padding:5px 8px;font-size:13px;height:27px}
+body.scanner .lang-btn{padding:0 7px;font-size:11px;min-width:30px}
+body.scanner main{padding:10px}
+body.scanner #view-scan{max-width:100%}
+body.scanner .card{padding:12px;margin-bottom:10px;border-radius:12px}
+body.scanner .q{font-size:20px;margin:2px 0 12px}
+body.scanner .crumbs{margin-bottom:8px}
+body.scanner .footer-note{padding:10px 0;font-size:10px}
+body.scanner #loc-info.snap{display:none!important}          /* snapshot kv table — admin only */
+body.scanner #rec-card .tbl-wrap{display:none}
+body.scanner #rec-card.open .tbl-wrap{display:block;max-height:220px}
+body.scanner #rec-card th:nth-child(n+6),body.scanner #rec-card td:nth-child(n+6){display:none} /* drop By column, keep ✕ */
+body.scanner #rec-card th:nth-child(2),body.scanner #rec-card td:nth-child(2){display:none}       /* drop Pallet column */
+#rec-card .rec-head{display:flex;align-items:center;gap:8px;cursor:default}
+body.scanner #rec-card .rec-head{cursor:pointer}
+#rec-last{display:none;font-size:12px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.scanner #rec-last{display:block}
+body.scanner #rec-card.open #rec-last{display:none}
+#rec-caret{display:none;color:var(--muted);font-size:12px}
+body.scanner #rec-caret{display:inline}
+.pick-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.pick-row:last-child{border-bottom:none}
+.pick-row .pm{flex:1;min-width:0}.pick-row .pm b{display:block;font-size:14px}.pick-row .pm span{font-size:12px;color:var(--muted)}
+/* ---- directive counting (next-location card + counter type) ---- */
+.ctype{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.ctype button{padding:14px 8px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);color:var(--txt);font-weight:800;font-size:15px;cursor:pointer;text-align:left}
+.ctype button small{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:4px;line-height:1.3}
+.ctype button.sel{border-color:var(--brand);background:rgba(152,1,46,.12)}
+.ctype button.recount{grid-column:1 / -1}
+.ctype button.recount.sel{border-color:#7c7ff0;background:rgba(120,127,240,.14)}
+.pill.recount{background:rgba(120,127,240,.18);color:#7c7ff0}
+#directive.recount{border-color:rgba(120,127,240,.55);background:rgba(120,127,240,.10)}
+#directive.recount .d-head b{color:#7c7ff0}
+#directive.recount .d-prog i{background:#7c7ff0}
+#loc-recount-note{border:1px solid rgba(120,127,240,.55);background:rgba(120,127,240,.10);border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:10px}
+#loc-recount-note b{color:#7c7ff0}
+#directive{border:1px solid rgba(22,160,83,.45);background:rgba(22,160,83,.08)}
+#directive .d-head{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+#directive .d-head b{color:#1aa053;font-size:12px;letter-spacing:.4px;text-transform:uppercase}
+#directive .d-loc{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:900;font-size:24px;letter-spacing:.5px;margin:6px 0 2px;word-break:break-all;line-height:1.15}
+#directive .d-meta{font-size:12px;color:var(--muted)}
+#directive .d-prog{height:6px;border-radius:4px;background:var(--panel2);margin:8px 0 6px;overflow:hidden}
+#directive .d-prog i{display:block;height:100%;background:#1aa053;width:0}
+#directive .d-queue{font-size:11px;color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#directive .d-actions{display:flex;gap:6px;align-items:center;margin-top:6px}
+#directive.mini .d-loc{font-size:15px;margin:2px 0}
+#directive.mini .d-prog,#directive.mini .d-queue,#directive.mini .d-actions,#directive.mini .d-meta{display:none}
+#directive.alldone{border-color:rgba(201,138,30,.5);background:rgba(201,138,30,.1)}
+#loc-blocked .who{font-size:15px;font-weight:700;margin:6px 0}
+/* unexpected stock: error card + capture steps */
+#u-ack{border:2px solid #dc2626;background:rgba(220,38,38,.12)}
+#u-ack .step-title{color:#f87171;font-size:18px}
+#u-ack .what{font-size:16px;font-weight:700;margin:6px 0;line-height:1.35}
+#u-ack .why{font-size:13px;margin:4px 0 8px;line-height:1.4}
+#u-ack .next{font-size:13px;color:var(--muted);line-height:1.45}
+.step.unx{border-color:rgba(220,38,38,.55)}
+.step.unx .step-title{color:#f87171}
+.crumb.unx{background:rgba(220,38,38,.18);color:#fecaca;border:1px solid rgba(220,38,38,.5)}
+#each-tbl tr.unx td{color:#f87171}
+[data-theme="light"] #u-ack .step-title,[data-theme="light"] .step.unx .step-title,[data-theme="light"] #each-tbl tr.unx td{color:#b91c1c}
+[data-theme="light"] .crumb.unx{color:#b91c1c}
+.ok-only #modal-no{display:none}
+/* ---- access gate (master PIN on / and /scan; asked again after the browser is fully closed) ---- */
+body.locked main,body.locked .tabs,body.locked #sessionBadge,body.locked #counterBadge,body.locked .scan-strip .chip.job,body.locked .scan-strip .chip.who{display:none!important}
+#gate-ov{z-index:60;background:var(--bg);align-items:flex-start;padding-top:12vh}
+#gate-ov .modal{max-width:380px}
+#gate-ov .gate-sub{font-size:13px;color:var(--muted);margin:4px 0 14px;line-height:1.4}
+#gate-ov .gate-err{font-size:13px;color:#d05252;font-weight:600;margin-top:8px;min-height:18px}
+#gate-ov input.scan{text-align:center;letter-spacing:10px;font-size:26px}
+/* ---- count type chip (physical · cycle · test) — quiet, same chrome everywhere ---- */
+.ctchip{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.6px;padding:2px 6px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);vertical-align:middle;line-height:1.3;text-transform:uppercase}
+.ctchip.cycle{color:#4a9fd6;border-color:rgba(74,159,214,.45);background:rgba(74,159,214,.12)}
+.ctchip.test{color:#c98a1e;border-color:rgba(201,138,30,.5);background:rgba(201,138,30,.14)}
+.scan-strip .chip.ct{flex:0 0 auto;padding:4px 7px;font-size:10px;cursor:default;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);background:var(--panel2);border-color:var(--line)}
+.scan-strip .chip.ct.cycle{color:#4a9fd6;border-color:rgba(74,159,214,.45);background:rgba(74,159,214,.12)}
+.scan-strip .chip.ct.test{color:#c98a1e;border-color:rgba(201,138,30,.5);background:rgba(201,138,30,.14)}
+#dash-ct{font-size:12px;color:var(--muted);margin:-2px 0 10px}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand-logo"><svg viewBox="0 0 44 34" width="30" height="24" aria-hidden="true"><polygon class="b1" points="9,2 43,2 34,10 0,10"/><polygon class="b2" points="9,13 43,13 34,21 0,21"/><polygon class="b3" points="9,24 43,24 34,32 0,32"/></svg><span class="wordmark">ARGENTS</span></span>
+  <span class="appname">Contare</span>
+  <span class="badge" id="sessionBadge">No active count</span>
+  <span class="badge" id="counterBadge" onclick="setCounter()" style="cursor:pointer">Counter: —</span>
+  <!-- scanner-mode header strip (hidden unless body.scanner) -->
+  <div class="scan-strip" id="scan-strip">
+    <span class="chip brand brand-logo" style="display:flex"><svg viewBox="0 0 44 34" width="22" height="17" aria-hidden="true"><polygon class="b1" points="9,2 43,2 34,10 0,10"/><polygon class="b2" points="9,13 43,13 34,21 0,21"/><polygon class="b3" points="9,24 43,24 34,32 0,32"/></svg></span>
+    <span class="chip job none mono" id="strip-job" onclick="scanPickCount()" title="Tap to switch count">No count</span>
+    <span class="chip ct hidden" id="strip-ct"></span>
+    <span class="chip who unset" id="strip-who" onclick="setCounter()" title="Tap to set your name" data-i18n-title="strip.who.title">Set name</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="tabs">
+    <button class="tab active" data-view="create" onclick="setView('create')" data-i18n="tab.create">Create Count Job</button>
+    <button class="tab" data-view="tower" onclick="setView('tower')" data-i18n="tab.tower">Control Tower</button>
+    <button class="tab" data-view="scan" onclick="setView('scan')" data-i18n="tab.scan">Scanner</button>
+    <button class="tab" data-view="dash" onclick="setView('dash')" data-i18n="tab.dash">Dashboard</button>
+  </div>
+  <button class="theme-btn lang-btn" id="lang-btn" onclick="toggleLang()" title="Cambiar a español" aria-label="Language / Idioma">EN</button>
+  <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle light / dark" data-i18n-title="theme.title">🌙</button>
+</header>
+<!-- Access gate: master PIN for the admin app (/) and a different one for the handhelds (/scan).
+     Verified server-side (check_access_pin → app_pins). The pass is kept in sessionStorage, so a
+     reload keeps you in but closing the browser completely asks again. Recount keeps its own PIN. -->
+<div id="gate-ov" class="modal-ov hidden">
+  <div class="modal">
+    <div class="brand-logo" style="margin-bottom:10px"><svg viewBox="0 0 44 34" width="30" height="24" aria-hidden="true"><polygon class="b1" points="9,2 43,2 34,10 0,10"/><polygon class="b2" points="9,13 43,13 34,21 0,21"/><polygon class="b3" points="9,24 43,24 34,32 0,32"/></svg><span class="wordmark">ARGENTS</span><span class="appname">Contare</span></div>
+    <div class="step-title" id="gate-title"></div>
+    <div class="gate-sub" id="gate-sub"></div>
+    <input class="scan" id="gate-pin" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="••••••" maxlength="12">
+    <div class="gate-err" id="gate-err"></div>
+    <div style="margin-top:10px"><button class="btn ok lg" id="gate-btn" onclick="gateSubmit()"></button></div>
+  </div>
+</div>
+<main>
+<div id="flash-slot"></div>
+
+<!-- Yes/No confirm modal -->
+<div id="ec-ov" class="modal-ov hidden">
+  <div class="modal">
+    <div id="ec-msg" class="modal-msg"></div>
+    <input class="scan" id="ec-qty" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0" oninput="this.value=this.value.replace(/\D/g,'')">
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="btn ghost" onclick="closeEnterCount()" data-i18n="cancel">Cancel</button>
+      <button class="btn ok" onclick="submitEnterCount()" data-i18n="each.enterOk">✓ Use this count</button>
+    </div>
+  </div>
+</div>
+<div id="modal-ov" class="modal-ov hidden">
+  <div class="modal">
+    <div id="modal-msg" class="modal-msg"></div>
+    <div class="modal-btns">
+      <button class="btn ghost" id="modal-no" data-i18n="no">No</button>
+      <button class="btn ok" id="modal-yes" data-i18n="yes">Yes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CREATE COUNT JOB ================= -->
+<section id="view-create">
+  <div class="card">
+    <b data-i18n="create.title">Create Count Job</b>
+    <div class="small" style="margin:6px 0 4px" data-i18n="create.intro">Set the stock-pull criteria for a new count. The name auto-formats as <span class="mono">C####-Customer-Warehouse-FreeText</span>.</div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label class="fld" data-i18n="lbl.customer">Customer</label><select class="t" id="nc-customer" onchange="previewName()"></select></div>
+      <div><label class="fld" data-i18n="lbl.warehouse">Warehouse</label><select class="t" id="nc-warehouse" onchange="previewName()"></select></div>
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label class="fld" data-i18n="lbl.scope">Scope</label>
+        <select class="t" id="nc-scope" onchange="scopeHint()"><option value="whole_customer" data-i18n="scope.whole_customer">Whole customer</option><option value="zones" data-i18n="scope.zones">Zones</option><option value="areas" data-i18n="scope.areas">Area</option><option value="rows" data-i18n="scope.rows">Row(s)</option><option value="locations" data-i18n="scope.locations">Locations</option><option value="skus" data-i18n="scope.skus">SKU(s)</option></select></div>
+      <div><label class="fld" id="nc-scopeval-l" data-i18n="create.scopeval.l">Zones / Areas / Locations (comma-sep)</label>
+        <input class="t" id="nc-scopeval" placeholder="e.g. CK, RK (areas) · C1Z (zones)" data-i18n-ph="create.scopeval.ph"></div>
+    </div>
+    <!-- second scope: narrows the first one (Row + Zone, SKU + Area …). Hidden on whole-customer counts. -->
+    <div class="grid2 hidden" style="margin-top:12px" id="nc-scope2-row">
+      <div><label class="fld" data-i18n="lbl.scope2">And also limit to</label>
+        <select class="t" id="nc-scope2" onchange="scopeHint2()"><option value="" data-i18n="scope2.none">— no second filter —</option><option value="zones" data-i18n="scope.zones">Zones</option><option value="areas" data-i18n="scope.areas">Area</option><option value="rows" data-i18n="scope.rows">Row(s)</option><option value="locations" data-i18n="scope.locations">Locations</option><option value="skus" data-i18n="scope.skus">SKU(s)</option></select></div>
+      <div><label class="fld" id="nc-scopeval2-l" data-i18n="create.scopeval2.l">Values (comma-sep)</label>
+        <input class="t" id="nc-scopeval2" placeholder="" disabled></div>
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label class="fld" data-i18n="lbl.ctype">Count type</label>
+        <select class="t" id="nc-ctype" onchange="previewName()"><option value="physical" data-i18n="ct.physical">Physical Inventory</option><option value="cycle" data-i18n="ct.cycle">Cycle Count</option><option value="test" data-i18n="ct.test">Test</option></select></div>
+      <div class="small" style="align-self:end;padding-bottom:10px" data-i18n="create.ctype.hint">Shown as a small tag on the count in the Control Tower, on the scanners and on the Dashboard, so counts can be filtered by type. Test counts are for training and trials.</div>
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label class="fld" data-i18n="create.suffix.l">Name suffix (free text)</label>
+        <input class="t" id="nc-freetext" placeholder="e.g. NIGHT-CREW, WK28, RECOUNT" oninput="previewName()" data-i18n-ph="create.suffix.ph"></div>
+      <div><label class="fld" data-i18n="create.preview.l">Count name preview</label>
+        <input class="t mono" id="nc-nameprev" readonly style="opacity:.85"></div>
+    </div>
+    <div style="margin-top:14px"><button class="btn" id="nc-btn" onclick="createCount()" data-i18n="create.btn">＋ Create Count Job &amp; Pull WMS Snapshot</button></div>
+    <div id="nc-progress" class="hidden" style="margin-top:14px">
+      <div class="prog"><div id="nc-bar"></div></div>
+      <div class="small" id="nc-progtext" style="margin-top:6px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CONTROL TOWER ================= -->
+<section id="view-tower" class="hidden">
+  <div class="card">
+    <div class="row" style="align-items:center"><b data-i18n="tower.title">Control Tower</b><div class="spacer"></div><button class="btn ghost sm" onclick="loadTower()" data-i18n="refresh">↻ Refresh</button></div>
+    <div class="row" style="margin-top:12px;gap:8px">
+      <select class="t" id="tf-customer" onchange="renderTower()" style="width:auto;min-width:150px"></select>
+      <select class="t" id="tf-warehouse" onchange="renderTower()" style="width:auto;min-width:140px"></select>
+      <select class="t" id="tf-scope" onchange="renderTower()" style="width:auto"><option value="" data-i18n="tower.allScopes">All scopes</option><option value="whole_customer" data-i18n="scope.whole_customer">Whole customer</option><option value="zones" data-i18n="scope.zones">Zones</option><option value="areas" data-i18n="scope.areas_pl">Areas</option><option value="rows" data-i18n="scope.rows">Row(s)</option><option value="locations" data-i18n="scope.locations">Locations</option><option value="skus" data-i18n="scope.skus">SKU(s)</option></select>
+      <select class="t" id="tf-ctype" onchange="renderTower()" style="width:auto"><option value="" data-i18n="tower.allTypes">All types</option><option value="physical" data-i18n="ct.physical">Physical Inventory</option><option value="cycle" data-i18n="ct.cycle">Cycle Count</option><option value="test" data-i18n="ct.test">Test</option></select>
+      <select class="t" id="tf-status" onchange="renderTower()" style="width:auto"><option value="" data-i18n="tower.allStatuses">All statuses</option><option value="pending" data-i18n="status.pending">Pending</option><option value="open" data-i18n="status.open">Open</option><option value="under_review" data-i18n="status.under_review">Under Review</option><option value="complete" data-i18n="status.complete">Complete</option><option value="closed" data-i18n="status.closed">Closed</option></select>
+      <input class="t" id="tf-from" type="date" onchange="renderTower()" style="width:auto" title="Created from" data-i18n-title="tower.from.title">
+      <input class="t" id="tf-to" type="date" onchange="renderTower()" style="width:auto" title="Created to" data-i18n-title="tower.to.title">
+      <input class="t" id="tf-search" placeholder="search…" oninput="renderTower()" style="width:150px" data-i18n-ph="tower.search.ph">
+    </div>
+    <div class="tbl-wrap" style="margin-top:12px;max-height:560px">
+      <table id="tower-tbl"><thead><tr>
+        <th data-i18n="th.count">Count</th><th data-i18n="th.type">Type</th><th data-i18n="th.customer">Customer</th><th data-i18n="th.warehouse">Warehouse</th><th data-i18n="th.scope">Scope</th><th data-i18n="th.status">Status</th><th data-i18n="th.snapshot">Snapshot</th>
+        <th data-i18n="th.matched">Matched</th><th data-i18n="th.variance">Variance</th><th data-i18n="th.unexpected">Unexpected</th><th data-i18n="th.uncounted">Uncounted</th><th data-i18n="th.lineacc">Line Acc.</th><th data-i18n="th.created">Created</th><th data-i18n="th.actions">Actions</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <div class="small" id="tower-note" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<!-- ================= SCANNER ================= -->
+<section id="view-scan" class="hidden">
+  <div class="card hidden" id="scan-nosession" data-i18n="scan.nosession"><b>No active count.</b> <span class="small">Go to Create Count Job or Control Tower and create or resume a count first.</span></div>
+  <!-- scanner mode: counter must identify themselves before anything records -->
+  <div class="card hidden" id="scan-counter">
+    <div class="step-title" data-i18n="counter.before">Before you start</div>
+    <div class="small mono" id="scan-counter-job" style="margin-bottom:8px"></div>
+    <label class="fld" data-i18n="counter.name.l">Your name (counter)</label>
+    <input class="scan" id="in-counter" placeholder="e.g. Maria" autocomplete="off" autocapitalize="words" style="font-size:18px" data-i18n-ph="counter.name.ph">
+    <label class="fld" style="margin-top:12px" data-i18n="counter.type.l">Type of count</label>
+    <div class="ctype">
+      <button type="button" id="ctype-floor" onclick="pickCtype('floor')" data-i18n="ctype.floor.btn">🚶 Floor Count<small>Level A anywhere · FS · IB · OB · CK · PK and other ground-level areas</small></button>
+      <button type="button" id="ctype-lift" onclick="pickCtype('lift')" data-i18n="ctype.lift.btn">🏗️ Lift Count<small>Racking (RK) · Levels B, C, D, E, F</small></button>
+      <button type="button" id="ctype-recount" class="recount" onclick="pickCtype('recount')" data-i18n="ctype.recount.btn">🔁 Recount<small>Only locations the office has sent back for a recount · PIN required</small></button>
+    </div>
+    <div id="pin-wrap" class="hidden" style="margin-top:10px">
+      <label class="fld" data-i18n="pin.l">Recount PIN</label>
+      <input class="scan" id="in-pin" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="••••••" maxlength="12" style="font-size:20px;letter-spacing:6px">
+      <div class="hint" data-i18n="pin.hint">Ask the office for today's recount PIN. It is checked each time you choose Recount on this screen.</div>
+    </div>
+    <div class="hint" data-i18n="counter.hint">Every scan is recorded under this name. The app then tells you which location to count next. Tap the name chip at the top to change name or count type.</div>
+    <div style="margin-top:12px"><button class="btn ok lg" onclick="saveCounterInline()" data-i18n="counter.start">✓ Start Counting</button></div>
+  </div>
+  <!-- scanner mode: pick the count to work on (replaces Control Tower on the handheld) -->
+  <div class="card hidden" id="scan-pick">
+    <div class="row" style="align-items:center"><div class="step-title" style="margin:0" data-i18n="pick.title">Pick a count</div><div class="spacer"></div><button class="btn ghost sm" onclick="loadScanPicker()">↻</button></div>
+    <div id="scan-pick-list" class="small" style="margin-top:8px">Loading…</div>
+    <div class="hint" data-i18n="pick.hint">Only open counts are listed. Counts are created and reviewed from the desktop app.</div>
+  </div>
+  <div id="scan-body">
+    <!-- directive: where to count next (scanner mode) -->
+    <div class="card hidden" id="directive">
+      <div class="d-head"><b data-i18n="dir.title">Next location</b><span id="d-role"></span><div class="spacer"></div><button class="btn ghost sm" onclick="loadDirective(true)" title="Refresh" data-i18n-title="dir.refresh.title">↻</button></div>
+      <div class="d-loc" id="d-loc">—</div>
+      <div class="d-meta" id="d-meta"></div>
+      <div class="d-prog"><i id="d-bar"></i></div>
+      <div class="d-queue" id="d-queue"></div>
+      <div class="d-actions"><span class="small" style="flex:1" data-i18n="dir.go">Go there and scan the location barcode.</span><button class="btn ghost sm" onclick="skipDirective()" data-i18n="dir.skip">Skip →</button></div>
+    </div>
+    <div class="crumbs" id="crumbs"></div>
+    <div id="loc-recount-note" class="hidden"></div>
+
+    <!-- location already counted / being counted elsewhere -->
+    <div class="card hidden" id="loc-blocked">
+      <div class="step-title" id="lb-title">Location already counted</div>
+      <div class="mono" id="lb-loc" style="font-weight:800;font-size:18px"></div>
+      <div class="who" id="lb-who"></div>
+      <div class="hint" id="lb-hint"></div>
+      <div class="row" style="margin-top:12px;gap:8px">
+        <button class="btn ok lg" style="flex:1" onclick="resetFlow()" data-i18n="lb.ok">OK · Scan next location</button>
+        <button class="btn warn hidden" id="lb-takeover" onclick="takeOverLocation()" data-i18n="lb.takeover">Take over</button>
+        <button class="btn ghost hidden" id="lb-recount" onclick="recount(flow.blockedLoc)" data-i18n="lb.recount">↺ Recount (admin)</button>
+      </div>
+    </div>
+
+    <div class="card step" id="s-location">
+      <div class="step-title" data-i18n="step1.title">Step 1 · Location</div>
+      <label class="fld" data-i18n="step1.l">Scan Location Barcode</label>
+      <input class="scan" id="in-location" placeholder="e.g. RK-B1R-00-W-8-B-1" autocomplete="off" autocapitalize="characters" data-i18n-ph="step1.ph">
+      <div class="hint" data-i18n="step1.hint">Scan or type the location, then press Enter.</div>
+    </div>
+    <div class="card hidden" id="loc-info"></div>
+
+    <div class="card step hidden" id="s-pallet-avail">
+      <div class="step-title" data-i18n="step2.title">Step 2 · License Plate</div>
+      <div class="q" data-i18n="q.palletAvail">Is a Pallet Tag available?</div>
+      <div class="yn"><button class="btn ok lg" onclick="answerPalletAvail(true)" data-i18n="yes.big">YES</button><button class="btn ghost lg" onclick="answerPalletAvail(false)" data-i18n="no.big">NO</button></div>
+      <div class="hint" style="margin-top:10px;color:var(--muted)" data-i18n="hint.morePallets">More pallets/cases at this location? Keep scanning — each one records and returns here. Press below only when the whole location is done.</div>
+      <button class="btn lg" style="background:var(--brand);color:#fff;width:100%;margin-top:6px" onclick="finishLocation()" data-i18n="btn.locComplete">✓ Location Count Complete</button>
+    </div>
+    <div class="card step hidden" id="s-pallet-scan">
+      <div class="step-title" data-i18n="pallet.title">Pallet Tag</div>
+      <label class="fld" data-i18n="pallet.scan.l">Scan Pallet Tag</label>
+      <input class="scan" id="in-pallet" placeholder="e.g. PLT-ELG-AEG-Y25-0028979" autocomplete="off" autocapitalize="characters" data-i18n-ph="pallet.ph">
+    </div>
+    <div class="card step hidden" id="s-pallet-open">
+      <div class="step-title" data-i18n="pallet.title">Pallet Tag</div>
+      <div class="q" data-i18n="q.palletOpen">Is the Pallet Tag <u>open</u>?</div>
+      <div class="hint" style="margin-bottom:12px" data-i18n="hint.palletOpen">Closed = full/sealed (auto-record all cases). Open = some cases missing or opened — scan each case, then say whether it is open.</div>
+      <div class="yn"><button class="btn warn lg" onclick="answerPalletOpen(true)" data-i18n="yes.open.m">YES · Open</button><button class="btn ok lg" onclick="answerPalletOpen(false)" data-i18n="no.closed.m">NO · Closed</button></div>
+    </div>
+    <div class="card step hidden" id="s-pallet-sku">
+      <div class="step-title" data-i18n="palletsku.title">Closed Pallet · Verify SKU</div>
+      <label class="fld" data-i18n="scan.sku.l">Scan SKU</label>
+      <input class="scan" id="in-pallet-sku" placeholder="Scan SKU on pallet" autocomplete="off" autocapitalize="characters" data-i18n-ph="palletsku.ph">
+      <div id="pallet-preview" class="hint"></div>
+      <div style="margin-top:14px"><button class="btn ok lg" onclick="commitClosedPallet()" data-i18n="palletsku.btn">✓ SKU Verified — Record Pallet</button></div>
+    </div>
+    <div class="card step hidden" id="s-pallet-cases">
+      <div class="step-title" data-i18n="palletcases.title">Open Pallet · Scan each Case</div>
+      <label class="fld" data-i18n="scan.case.l">Scan Case Number</label>
+      <input class="scan" id="in-open-pallet-case" placeholder="Scan case on pallet" autocomplete="off" autocapitalize="characters" data-i18n-ph="palletcases.ph">
+      <div class="hint" id="open-pallet-progress"></div>
+      <div style="margin-top:12px"><button class="btn ok lg" onclick="nextItem()" data-i18n="palletcases.btn">✓ Pallet Count Complete</button></div>
+    </div>
+    <div class="card step hidden" id="s-opc-open">
+      <div class="step-title" data-i18n="opc.title">Open Pallet · Case</div>
+      <div class="q" data-i18n="q.caseOpen">Is the Case <u>open</u>?</div>
+      <div class="hint" style="margin-bottom:12px" id="opc-hint">Closed = sealed (record the WMS quantity). Open = partial, scan each unit inside.</div>
+      <div class="yn"><button class="btn warn lg" onclick="answerOpenPalletCaseOpen(true)" data-i18n="yes.open.f">YES · Open</button><button class="btn ok lg" onclick="answerOpenPalletCaseOpen(false)" data-i18n="no.closed.f">NO · Closed</button></div>
+    </div>
+    <div class="card step hidden" id="s-case-avail">
+      <div class="step-title" data-i18n="step3.title">Step 3 · Case</div>
+      <div class="q" data-i18n="q.caseAvail">Is a Case Number available?</div>
+      <div class="yn"><button class="btn ok lg" onclick="answerCaseAvail(true)" data-i18n="yes.big">YES</button><button class="btn ghost lg" onclick="answerCaseAvail(false)" data-i18n="no.big">NO</button></div>
+      <div id="case-avail-finish" class="hidden">
+        <div class="hint" style="margin-top:10px;color:var(--muted)" data-i18n="hint.noPalletMore">No pallet tags at this location — more cases/eaches here? Keep scanning; each one records and returns here. Press below only when the whole location is done.</div>
+        <button class="btn lg" style="background:var(--brand);color:#fff;width:100%;margin-top:6px" onclick="finishLocation()" data-i18n="btn.locComplete">✓ Location Count Complete</button>
+      </div>
+    </div>
+    <div class="card step hidden" id="s-case-scan">
+      <div class="step-title" data-i18n="case.title">Case Number</div>
+      <label class="fld" data-i18n="scan.case.l">Scan Case Number</label>
+      <input class="scan" id="in-case" placeholder="e.g. CS-ELG-AEG-Y25-0340556" autocomplete="off" autocapitalize="characters" data-i18n-ph="case.ph">
+    </div>
+    <div class="card step hidden" id="s-case-open">
+      <div class="step-title" data-i18n="case.short">Case</div>
+      <div class="q" data-i18n="q.caseOpen">Is the Case <u>open</u>?</div>
+      <div class="yn"><button class="btn warn lg" onclick="answerCaseOpen(true)" data-i18n="yes.open.f">YES · Open</button><button class="btn ok lg" onclick="answerCaseOpen(false)" data-i18n="no.closed.f">NO · Closed</button></div>
+    </div>
+    <div class="card step hidden" id="s-case-sku">
+      <div class="step-title" data-i18n="casesku.title">Closed Case · Verify SKU</div>
+      <label class="fld" data-i18n="scan.sku.l">Scan SKU</label>
+      <input class="scan" id="in-case-sku" placeholder="Scan SKU in case" autocomplete="off" autocapitalize="characters" data-i18n-ph="casesku.ph">
+      <div id="case-preview" class="hint"></div>
+      <div style="margin-top:14px"><button class="btn ok lg" onclick="commitClosedCase()" data-i18n="casesku.btn">✓ SKU Verified — Record Case</button></div>
+    </div>
+    <div class="card step hidden" id="s-eaches">
+      <div class="step-title" id="eaches-title">Each Count</div>
+      <div class="counter" id="eaches-count">0</div>
+      <div class="hint" style="text-align:center;margin-bottom:14px" id="eaches-sub"></div>
+      <label class="fld" data-i18n="each.l">Scan Unit (SKU / UPC)</label>
+      <input class="scan" id="in-each" placeholder="Scan unit (SKU / UPC)" autocomplete="off" autocapitalize="characters" data-i18n-ph="each.ph">
+      <!-- Each-only locations (Pallet Tag = No, Case = No) may key a quantity after a verification scan of the SKU/UPC -->
+      <div id="each-enter-wrap" class="hidden" style="margin-top:10px"><button class="btn ghost" style="width:100%" id="btn-enter-count" onclick="openEnterCount()" disabled data-i18n="each.enterBtn">⌨ Enter Count</button><div class="hint" id="each-enter-hint" style="margin-top:6px;text-align:center"></div></div>
+      <div class="tbl-wrap" style="margin-top:12px;max-height:180px"><table id="each-tbl"><thead><tr><th data-i18n="th.sku">SKU</th><th data-i18n="th.qty">Qty</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="row" style="margin-top:12px"><button class="btn ok" style="flex:1" id="btn-eaches-done" onclick="commitEaches()">✓ Count Complete</button><button class="btn ghost" onclick="cancelStep()" data-i18n="cancel">Cancel</button></div>
+    </div>
+
+
+    <!-- ===== Unexpected stock: error acknowledgement + capture (location carried forward) ===== -->
+    <div class="card step hidden" id="u-ack">
+      <div class="step-title" id="u-ack-title">⛔ Unexpected</div>
+      <div class="what" id="u-ack-what"></div>
+      <div class="why" id="u-ack-why"></div>
+      <div class="next" id="u-ack-next"></div>
+      <button class="btn bad lg" style="width:100%;margin-top:12px;background:#dc2626;color:#fff" onclick="ackUnexpected()" data-i18n="uack.btn">OK — record it as found stock</button>
+    </div>
+    <div class="card step unx hidden" id="u-pallet">
+      <div class="step-title" data-i18n="upallet.title">Unexpected stock · Pallet Tag</div>
+      <label class="fld" data-i18n="upallet.l">Scan the Pallet Tag this stock is on</label>
+      <input class="scan" id="in-u-pallet" placeholder="Scan pallet tag" autocomplete="off" autocapitalize="characters" data-i18n-ph="upallet.ph">
+      <div class="row" style="margin-top:10px"><button class="btn ghost" style="flex:1" onclick="unxNoPallet()" data-i18n="upallet.none">No pallet tag</button><button class="btn ghost" onclick="cancelStep()" data-i18n="cancel">Cancel</button></div>
+    </div>
+    <div class="card step unx hidden" id="u-case">
+      <div class="step-title" data-i18n="ucase.title">Unexpected stock · Case LPN</div>
+      <label class="fld" data-i18n="ucase.l">Scan the Case LPN</label>
+      <input class="scan" id="in-u-case" placeholder="Scan case LPN" autocomplete="off" autocapitalize="characters" data-i18n-ph="ucase.ph">
+      <div class="hint" id="u-case-hint"></div>
+      <div class="row" style="margin-top:10px"><button class="btn ghost" style="flex:1" onclick="unxNoCase()" data-i18n="ucase.none">No case LPN · loose units</button><button class="btn ok hidden" id="u-pallet-done" onclick="unxPalletDone()" data-i18n="ucase.palletDone">✓ Pallet done</button><button class="btn ghost" onclick="cancelStep()" data-i18n="cancel">Cancel</button></div>
+    </div>
+    <div class="card step unx hidden" id="u-sku">
+      <div class="step-title" data-i18n="usku.title">Unexpected stock · SKU</div>
+      <label class="fld" data-i18n="usku.l">Scan the SKU / UPC</label>
+      <input class="scan" id="in-u-sku" placeholder="Scan SKU or UPC" autocomplete="off" autocapitalize="characters" data-i18n-ph="usku.ph">
+      <div class="hint" data-i18n="usku.hint">Next you will scan every unit present, one scan per unit.</div>
+      <div class="row" style="margin-top:10px"><button class="btn ghost" onclick="cancelStep()" data-i18n="cancel">Cancel</button></div>
+    </div>
+    <div class="row" style="margin:4px 0 16px"><button class="btn ghost" onclick="restartLocation()" data-i18n="restartLoc">↺ Restart Location</button></div>
+
+    <div class="card" id="rec-card">
+      <div class="rec-head" onclick="toggleRecent()"><b data-i18n="rec.title">Recent scans (live)</b><span class="badge" id="rec-count">0</span><div class="spacer"></div><span id="rec-caret">▾ show</span></div>
+      <div id="rec-last"></div>
+      <div class="tbl-wrap" style="margin-top:10px"><table id="rec-tbl"><thead><tr><th data-i18n="th.location">Location</th><th data-i18n="th.pallet">Pallet</th><th data-i18n="th.case">Case</th><th data-i18n="th.sku">SKU</th><th data-i18n="th.qty">Qty</th><th data-i18n="th.by">By</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DASHBOARD ================= -->
+<section id="view-dash" class="hidden">
+  <div class="card hidden" id="dash-nosession" data-i18n="dash.nosession"><b>No active count.</b> <span class="small">Create or resume a count first.</span></div>
+  <div id="dash-body">
+    <div id="dash-ct"></div>
+    <div class="tile-row r1"><div class="rt" data-i18n="dash.countData">Count data</div><div class="tiles" id="dash-tiles"></div></div>
+    <div class="tile-row r2"><div class="rt" data-i18n="dash.locMetrics">Location metrics <span style="font-weight:400;text-transform:none;letter-spacing:0">— a location is Matched only when every line at it matches; one short carton makes the whole location a Variance</span></div><div class="tiles" id="dash-tiles-loc"></div></div>
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <b data-i18n="dash.recon.title">Reconciliation — Scanned vs WMS snapshot</b><div class="spacer"></div>
+        <input class="t" id="dash-search" placeholder="search sku / case / location" oninput="debouncedDash()" style="width:200px" data-i18n-ph="dash.search.ph">
+        <select class="t" id="dash-filter" onchange="loadReconDetail()" style="width:180px">
+          <option value="all" selected data-i18n="dash.f.all">All</option><option value="variance" data-i18n="dash.f.variance">Variances</option>
+          <option value="uncounted" data-i18n="dash.f.uncounted">Uncounted</option><option value="unexpected" data-i18n="dash.f.unexpected">Unexpected</option><option value="match" data-i18n="dash.f.match">Matched</option>
+          <option value="loc:queue" data-i18n="dash.f.recountQueue">Recount queue</option><option value="loc:recount" data-i18n="dash.f.locRecount">Locations to recount</option><option value="loc:all" data-i18n="dash.f.locAll">All locations (by status)</option>
+        </select>
+        <button class="btn ghost sm" onclick="exportRecon()" data-i18n="dash.exportRecon">⬇ Recon CSV</button><button class="btn ghost sm" onclick="exportScans()" data-i18n="dash.exportScans">⬇ Scans CSV</button><button class="btn ghost sm" onclick="refreshDash()">↻</button>
+      </div>
+      <div class="tbl-wrap" style="margin-top:12px;max-height:520px">
+        <table id="dash-tbl"><thead data-i18n="dash.thead.lines"><tr><th>Status</th><th>Location</th><th>Pallet Tag</th><th>Case</th><th>SKU</th><th>Product</th><th>WMS</th><th>Counted</th><th>Δ</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="small" style="margin-top:8px" id="dash-note"></div>
+    </div>
+  </div>
+</section>
+
+<div class="footer-note">Argents Express · Contare — <span data-i18n="footer.app">WMS Physical Count</span> · <span id="build-date"></span> · <span id="conn-state" data-state="connecting">connecting…</span></div>
+</main>
+
+<script>
+/* ---------- Supabase config (anon key is safe to expose; RLS governs access) ---------- */
+const SUPABASE_URL = "https://iwzgkklkcngoctrnqzlc.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3emdra2xrY25nb2N0cm5xemxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjQ5MDksImV4cCI6MjA5OTIwMDkwOX0.hpB_S2U4ZNypplT44V0QoylSCRti1wxjpji3gBN2jDE";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+/* ---------- state ---------- */
+let session = null;          // active count_sessions row (joined customer/warehouse)
+let flow = {};
+let eachBuf = {};
+let CUST=[],WH=[],TOWER=[],NEXTNUM='';
+let recChan = null;          // realtime channel
+const STEPS=['s-location','s-pallet-avail','s-pallet-scan','s-pallet-open','s-pallet-sku','s-pallet-cases','s-opc-open','s-case-avail','s-case-scan','s-case-open','s-case-sku','s-eaches','u-ack','u-pallet','u-case','u-sku'];
+
+/* ---------- scanner mode ----------
+   /scan (vercel.json rewrite), ?mode=scanner or #scan → body.scanner.
+   One view (Scanner), compact header strip, no snapshot, no expected
+   quantities, counter name required. The handhelds bookmark /scan. */
+const SCANNER = /^\/scan\/?$/i.test(location.pathname) || /[?&]mode=scanner\b/i.test(location.search) || /^#scan$/i.test(location.hash);
+if(SCANNER) document.body.classList.add('scanner');
+
+/* ---------- access gate ----------
+   Master PIN before anything loads: purpose 'scanner' on /scan, 'admin' on /.
+   check_access_pin() verifies against app_pins server-side (bcrypt), logs to pin_uses
+   and locks a device out after 5 misses in 10 minutes — same rules as the Recount PIN,
+   which stays separate on the counter card. The pass lives in sessionStorage: a reload
+   or a tab reopen inside the same browser session is silent; closing the browser fully
+   asks again. The PIN itself is never stored on the device. */
+const GATE_PURPOSE=SCANNER?'scanner':'admin';
+function gatePassed(){try{return sessionStorage.getItem('pc_gate')===GATE_PURPOSE;}catch(e){return false;}}
+function requireGate(){
+  return new Promise(res=>{
+    if(gatePassed())return res(true);
+    document.body.classList.add('locked');
+    const ov=document.getElementById('gate-ov'),pi=document.getElementById('gate-pin');
+    document.getElementById('gate-title').textContent=t(SCANNER?'gate.title.scanner':'gate.title.admin');
+    document.getElementById('gate-sub').textContent=t(SCANNER?'gate.sub.scanner':'gate.sub.admin');
+    document.getElementById('gate-btn').textContent=t('gate.btn');
+    document.getElementById('gate-err').textContent='';
+    ov.classList.remove('hidden'); pi.value=''; setTimeout(()=>pi.focus(),50);
+    window._gateResolve=res;
+  });
+}
+async function gateSubmit(){
+  const pi=document.getElementById('gate-pin'),err=document.getElementById('gate-err'),btn=document.getElementById('gate-btn');
+  const pin=pi.value.trim(); if(!pin){err.textContent=t('gate.empty');pi.focus();return;}
+  btn.disabled=true; err.textContent='';
+  try{
+    const {data,error}=await sb.rpc('check_access_pin',{p_purpose:GATE_PURPOSE,p_pin:pin,p_device:deviceId()});
+    if(error)throw error;
+    if(data===true){
+      try{sessionStorage.setItem('pc_gate',GATE_PURPOSE);}catch(e){}
+      document.getElementById('gate-ov').classList.add('hidden'); document.body.classList.remove('locked'); pi.value='';
+      if(window._gateResolve){window._gateResolve(true);window._gateResolve=null;}
+    }else{ err.textContent=t('gate.bad'); pi.value=''; pi.focus(); }
+  }catch(e){ err.textContent=t('gate.err',{msg:e.message}); }
+  finally{btn.disabled=false;}
+}
+/* ---------- count type (physical | cycle | test) ---------- */
+function ctKey(c){return (c==='cycle'||c==='test')?c:'physical';}
+function ctName(c){return t('ct.'+ctKey(c));}
+function ctShort(c){return t('ct.'+ctKey(c)+'.short');}
+function ctChip(c,cls){const k=ctKey(c);return `<span class="ctchip ${k}${cls?' '+cls:''}" title="${ctName(k)}">${ctShort(k)}</span>`;}
+/* scope as one line: "Row(s): H, I + Zones: P1Z" (second scope optional) */
+function scopeText(s,lower){
+  if(!s)return '';
+  if(s.scope_type==='whole_customer'&&!s.scope_type2){const w=scopeLabel('whole_customer');return lower?w.toLowerCase():w;}
+  const parts=[];
+  if(s.scope_type&&s.scope_type!=='whole_customer')parts.push(scopeLabel(s.scope_type)+': '+(s.scope_values||[]).join(', '));
+  if(s.scope_type2)parts.push(scopeLabel(s.scope_type2)+': '+(s.scope_values2||[]).join(', '));
+  return parts.join(' + ');
+}
+
+function counter(){return localStorage.getItem('pc_counter')||''}
+function ctype(){const t=localStorage.getItem('pc_ctype');return (t==='floor'||t==='lift'||t==='recount')?t:'';}
+function isRecounter(){return ctype()==='recount';}
+function deviceId(){let d=localStorage.getItem('pc_device');if(!d){d='dev-'+Math.random().toString(36).slice(2,8);localStorage.setItem('pc_device',d);}return d;}
+/* ---------- directive counting state ----------
+   registeredFor: session id the current name+type has been registered on (count_counters).
+   directive:     last next_directive() answer for this counter.  skipList: locations the
+   counter skipped on this device (offered again once nothing else is left). */
+let registeredFor=null, directive=null, skipList=[], dirTimer=null, dirChan=null;
+function setCounter(){
+  if(SCANNER){ // inline card instead of a browser prompt on the handheld
+    const c=document.getElementById('scan-counter');c.classList.remove('hidden');
+    ['scan-body','scan-pick','scan-nosession'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+    document.getElementById('scan-counter-job').textContent=session?t('counter.job',{id:session.count_id,cust:session.customer.name}):'';
+    const i=document.getElementById('in-counter');i.value=counter();document.getElementById('in-pin').value='';pickCtype(ctype(),true);setTimeout(()=>i.focus(),30);return;
+  }
+  const v=prompt(t('counter.prompt'),counter());if(v!=null){localStorage.setItem('pc_counter',v.trim());updateBadges();}
+}
+function pickCtype(ty,silent){ if(ty)localStorage.setItem('pc_ctype',ty); else localStorage.removeItem('pc_ctype');
+  ['floor','lift','recount'].forEach(k=>document.getElementById('ctype-'+k).classList.toggle('sel',ty===k));
+  // Recount is PIN-gated every time this screen is used (the PIN is never stored on the device)
+  const pw=document.getElementById('pin-wrap'),pi=document.getElementById('in-pin');pw.classList.toggle('hidden',ty!=='recount');
+  if(!silent){document.getElementById('in-counter').blur(); if(ty==='recount')setTimeout(()=>pi.focus(),30);} }
+async function saveCounterInline(){const v=document.getElementById('in-counter').value.trim();if(!v){flash('warn',t('msg.enterNameStart'));return;}
+  if(!ctype()){flash('warn',t('msg.chooseType'));return;}
+  const pin=document.getElementById('in-pin').value.trim();
+  if(isRecounter()&&!pin){flash('warn',t('pin.required'));document.getElementById('in-pin').focus();return;}
+  const changed=v!==counter(); localStorage.setItem('pc_counter',v);updateBadges();
+  if(session){ const ok=await registerCounter(pin); if(!ok)return; }
+  document.getElementById('in-pin').value='';
+  flash('ok',t('counter.ready',{who:changed?t('counter.countingAs',{name:v}):t('ready'),type:ctypeName()}));setView('scan');}
+/* register name + type on the active count; the server assigns the join-order sequence that drives direction.
+   For the Recount type the server checks the PIN and returns an empty row when it is wrong. */
+async function registerCounter(pin){
+  if(!session||!counter()||!ctype())return false;
+  const {data,error}=await sb.rpc('register_counter',{p_session:session.id,p_name:counter(),p_type:ctype(),p_device:deviceId(),p_pin:pin||null});
+  if(error){flash('bad',t('err.register',{msg:error.message}));return false;}
+  if(!data||!data.id){flash('bad',t('pin.invalid'));const pi=document.getElementById('in-pin');pi.value='';pi.focus();return false;}
+  registeredFor=session.id; directive=null; skipList=[]; return true;
+}
+function updateBadges(){
+  document.getElementById('counterBadge').textContent=t('badge.counter',{name:counter()||t('badge.setName')});
+  const sbdg=document.getElementById('sessionBadge');
+  sbdg.textContent = session ? (session.count_id+' · '+session.customer.name+' · '+session.warehouse.name) : t('badge.noCount');
+  if(session)sbdg.insertAdjacentHTML('beforeend',' '+ctChip(session.count_type));
+  sbdg.className='badge'+(session?' ok':'');
+  // scanner strip
+  const j=document.getElementById('strip-job'),w=document.getElementById('strip-who'),ctc=document.getElementById('strip-ct');
+  if(j){j.textContent=session?session.count_id:t('strip.noCount');j.className='chip job mono'+(session?'':' none');j.title=session?t('strip.jobTitle',{cust:session.customer.name,wh:session.warehouse.name}):t('strip.pickTitle');}
+  if(ctc){ctc.classList.toggle('hidden',!session);if(session){ctc.textContent=ctShort(session.count_type);ctc.className='chip ct '+ctKey(session.count_type);ctc.title=ctName(session.count_type);}}
+  if(w){w.textContent=(counter()||t('strip.setName'))+(counter()&&ctype()?' · '+ctypeShort():'');w.className='chip who'+(counter()?'':' unset');}
+}
+/* remember the active count across reloads (handhelds get power-cycled) */
+function rememberSession(){ if(session)localStorage.setItem('pc_session_id',session.id); else localStorage.removeItem('pc_session_id'); }
+async function restoreSession(){
+  const id=localStorage.getItem('pc_session_id'); if(!id)return false;
+  const {data,error}=await sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').eq('id',id).maybeSingle();
+  if(error||!data||data.status==='verified'||data.status==='closed'){localStorage.removeItem('pc_session_id');return false;}
+  session=data;registeredFor=null;subscribeScans();updateBadges();return true;
+}
+/* after a reload: is this name+type already registered on the restored count? (skips the gate card) */
+async function checkRegistered(){
+  if(!session||!counter()||!ctype())return false;
+  const {data}=await sb.from('count_counters').select('counter_type').eq('session_id',session.id).eq('counter_name',counter()).maybeSingle();
+  if(data&&data.counter_type===ctype()){registeredFor=session.id;
+    // refresh last_seen/device (no PIN here: a reload inside the Recount type does not re-prompt, so skip the PIN-checked call)
+    if(!isRecounter())sb.rpc('register_counter',{p_session:session.id,p_name:counter(),p_type:ctype(),p_device:deviceId()});
+    else sb.from('count_counters').update({last_seen:new Date().toISOString(),device_id:deviceId()}).eq('session_id',session.id).eq('counter_name',counter());
+    return true;}
+  return false;
+}
+/* scanner-mode count picker: open/counting sessions only, no status changes */
+function scanPickCount(){ if(!SCANNER)return; ['scan-body','scan-counter','scan-nosession'].forEach(id=>document.getElementById(id).classList.add('hidden')); document.getElementById('scan-pick').classList.remove('hidden'); loadScanPicker(); }
+async function loadScanPicker(){
+  const el=document.getElementById('scan-pick-list'); el.textContent=t('loading');
+  const {data,error}=await sb.from('count_sessions').select('id,count_id,status,scope_type,scope_values,scope_type2,scope_values2,count_type,created_at, customer:customers(name), warehouse:warehouses(name)').in('status',['open','counting']).order('created_at',{ascending:false}).limit(25);
+  if(error){el.textContent=t('err.load',{msg:error.message});return;}
+  if(!data||!data.length){el.textContent=t('pick.none');return;}
+  el.innerHTML=data.map(s=>`<div class="pick-row"><div class="pm"><b class="mono">${s.count_id} ${ctChip(s.count_type)}</b><span>${s.customer?.name||''} · ${s.warehouse?.name||''} · ${scopeText(s,true)}</span></div><button class="btn ok sm" onclick="scanUseCount('${s.id}')">${session&&session.id===s.id?t('pick.current'):t('pick.use')}</button></div>`).join('');
+}
+async function scanUseCount(id){
+  const {data,error}=await sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').eq('id',id).single();
+  if(error){flash('bad',error.message);return;}
+  session=data;registeredFor=null;directive=null;skipList=[];rememberSession();subscribeScans();updateBadges();flash('ok',t('msg.counting',{id:data.count_id,cust:data.customer.name}));
+  setCounter(); // spec: on choosing a count → ask name → ask type (prefilled from last time)
+}
+function toggleRecent(){ if(!SCANNER)return; const c=document.getElementById('rec-card');c.classList.toggle('open');document.getElementById('rec-caret').textContent=c.classList.contains('open')?t('rec.hide'):t('rec.show'); }
+function flash(type,msg){const s=document.getElementById('flash-slot');s.innerHTML='<div class="flash '+type+'">'+msg+'</div>';if(type==='ok')setTimeout(()=>{if(s.firstChild)s.innerHTML=''},4000);}
+
+/* ---------- views ---------- */
+function setView(v){
+  if(SCANNER)v='scan';                       // handheld has exactly one view
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v));
+  ['create','tower','scan','dash'].forEach(x=>document.getElementById('view-'+x).classList.toggle('hidden',x!==v));
+  if(v==='create')previewName();
+  if(v==='tower')loadTower();
+  if(v==='scan'){
+    const g=id=>document.getElementById(id);
+    g('scan-counter').classList.add('hidden');g('scan-pick').classList.add('hidden');
+    if(SCANNER){
+      // gate order: count → name + count type (registered on that count) → scanning
+      g('scan-nosession').classList.add('hidden');g('scan-body').classList.add('hidden');
+      if(!session){scanPickCount();return;}
+      if(!counter()||!ctype()||registeredFor!==session.id){setCounter();return;}
+      g('scan-body').classList.remove('hidden');resetFlow();loadRecentScans();loadDirective();return;
+    }
+    g('scan-nosession').classList.toggle('hidden',!!session); g('scan-body').classList.toggle('hidden',!session); if(session){resetFlow();loadRecentScans();} }
+  if(v==='dash'){ document.getElementById('dash-nosession').classList.toggle('hidden',!!session); document.getElementById('dash-body').classList.toggle('hidden',!session); if(session)refreshDash(); }
+}
+/* ---------- theme ---------- */
+function applyTheme(th){document.documentElement.setAttribute('data-theme',th);localStorage.setItem('pc_theme',th);const b=document.getElementById('theme-btn');if(b)b.textContent=th==='light'?'☀️':'🌙';}
+function toggleTheme(){applyTheme((localStorage.getItem('pc_theme')||'dark')==='light'?'dark':'light');}
+
+/* ---------- language: EN / ES ----------
+   One neutral Latin American Spanish, no regional variants. Static markup carries
+   data-i18n (innerHTML), data-i18n-ph (placeholder) or data-i18n-title (title); its
+   English is captured from the DOM on the first apply, so only the Spanish for those
+   keys lives in I18N.es. Strings built in JS go through t(key, vars) with both
+   languages in I18N. The choice persists in localStorage ('pc_lang') exactly like the
+   theme ('pc_theme'); the EN/ES button sits beside the theme switch. */
+let LANG='en';
+const I18N={
+en:{
+  'gate.title.admin':'Office access','gate.title.scanner':'Scanner access','gate.sub.admin':'Enter the Contare office PIN to open the admin app. You will be asked again after the browser is fully closed.','gate.sub.scanner':'Enter the scanner PIN to start. Ask the office if you do not have it. You will be asked again after the browser is fully closed.','gate.btn':'✓ Unlock','gate.empty':'Enter the PIN.','gate.bad':'PIN not accepted. After 5 wrong tries this device is locked out for 10 minutes.','gate.err':'Could not check the PIN: {msg}',
+  'ct.physical':'Physical Inventory','ct.cycle':'Cycle Count','ct.test':'Test','ct.physical.short':'PI','ct.cycle.short':'CC','ct.test.short':'TEST',
+  'create.needScopeVals':'Enter at least one value for {type}.','create.sameScope':'The second filter must be a different dimension from the first (e.g. Row(s) + Zones).','create.applyingScope2':'Applying second filter — {type}: {vals}…','create.scope2Failed':'second filter failed: {msg}','create.scope2Empty':'No snapshot rows match {type}: {vals} on top of the first filter — the count is empty. Check the values or delete the count.',
+  'counter.job':'Count: {id} · {cust}','counter.prompt':'Your name (counter):','msg.enterNameStart':'Enter your name to start counting.','msg.chooseType':'Choose Floor Count, Lift Count or Recount.','counter.countingAs':'Counting as {name}','ready':'Ready','counter.ready':'{who} — {type}.',
+  'ctype.floor.name':'Floor count','ctype.lift.name':'Lift count','ctype.floor.short':'Floor','ctype.lift.short':'Lift','ctype.floor.low':'floor','ctype.lift.low':'lift',
+  'ctype.recount.name':'Recount','ctype.recount.short':'Recount','ctype.recount.low':'recount',
+  'pin.required':'Enter the recount PIN.','pin.invalid':'PIN not accepted. Check with the office — after 5 wrong tries this scanner is locked out for 10 minutes.',
+  'dir.recountRole':'Recount queue · counter #{seq}','dir.recountMeta':'Recount #{n} · requested by {who}{when}{why}','dir.recountWhy':' — “{r}”','dir.recountAllDone':'Recount queue is empty','dir.recountNone':'No recounts have been requested on this count','dir.recountDoneOf':'{done} of {total} recounts done','dir.locType':' · {t} location',
+  'lb.rqTitle':'🔁 Location is in the recount queue','lb.rqBy':'Recount #{n} requested by {who}{when}','lb.rqHint':'Only a Recount counter can count this location now. Follow your Next location; if you are meant to do the recount, tap the name chip and choose Recount (PIN required).',
+  'lb.nqTitle':'⛔ Not in the recount queue','lb.nqHint':'You are on the Recount count, so you can only count locations the office has sent back. Follow the Next location card, or tap the name chip to switch to Floor or Lift count.',
+  'note.recount':'<b>🔁 Recount #{n}</b> — requested by {who}{when}{why}. The earlier count stays on file; everything you scan now is the new count for this location.',
+  'err.register':'Could not register counter: {msg}',
+  'badge.counter':'Counter: {name}','badge.setName':'set name','badge.noCount':'No active count','strip.noCount':'No count','strip.jobTitle':'{cust} · {wh} — tap to switch','strip.pickTitle':'Tap to pick a count','strip.setName':'Set name',
+  'loading':'Loading…','err.load':'Load failed: {msg}','pick.none':'No open counts. Ask the office to create one.','pick.current':'Current','pick.use':'Use',
+  'msg.counting':'Counting {id} — {cust}','rec.hide':'▴ hide','rec.show':'▾ show',
+  'tower.allCustomers':'All customers','tower.allWarehouses':'All warehouses','err.loadCounts':'Load counts: {msg}',
+  'act.view':'View','act.resume':'Resume','act.review':'Review','act.complete':'Complete','act.close':'Close','act.delete':'Delete count','act.recount':'↺ Recount',
+  'tower.noMatch':'No counts match the current filters.','tower.shown':'{n} of {total} count(s) shown',
+  'confirm.close':'Close this count? It will be marked Closed and removed from active work. You can still View it.','err.close':'Close failed: {msg}','msg.closed':'Count closed.',
+  'confirm.delete':'Permanently DELETE count {label}? This removes its WMS snapshot and every scan. This cannot be undone.','err.delete':'Delete failed: {msg}','msg.deleted':'Count {label} deleted.',
+  'msg.lockedView':'Count {id} is verified & locked — viewing only.','msg.reopened':'Count {id} reopened for counting.','msg.active':'Active count: {id} — {cust}',
+  'err.update':'Update failed: {msg}','msg.underReview':'Count moved to Under Review (soft-locked). Use Resume to reopen it for counting.',
+  'confirm.complete':"By selecting the 'Complete' option, you are verifying the count. The count status will move to Verified and be locked. Do you wish to continue?",'err.completeCount':'Complete failed: {msg}','msg.verified':'Count verified and locked.',
+  'scopeHint.whole_customer.l':'(entire customer — no values needed)','scopeHint.whole_customer.p':'no values needed','scopeHint.zones.l':'Zones (comma-sep)','scopeHint.zones.p':'e.g. C1Z, CK','scopeHint.areas.l':'Areas (comma-sep)','scopeHint.areas.p':'e.g. CK, RK','scopeHint.rows.l':'Row(s) (comma-sep)','scopeHint.rows.p':'e.g. AD, AR  (4th segment of location)','scopeHint.locations.l':'Locations (comma-sep)','scopeHint.locations.p':'e.g. RK-A1R-00-AD-9-A-1','scopeHint.skus.l':'SKU(s) (comma-sep)','scopeHint.skus.p':'e.g. 237OB01, 100NB12',
+  'msg.enterName':'Enter your name first.','create.refreshingProducts':'Refreshing product catalog (UPC)... page {p}/{n}','create.pulling':'Pulling WMS snapshot… page {page}/{last} · {n} {cust} rows','create.snapReady':'Snapshot ready: {n} rows frozen for {id}.','create.created':'Count {id} created — snapshot has {n} rows.','err.create':'Create failed: {msg}',
+  'err.directive':'Directive: {msg}','dir.role':'{type} · counter #{seq} {dirn}','dir.asc':'↑ low→high priority','dir.desc':'↓ high→low priority','dir.allDone':'All {type} locations counted','dir.none':'No {type} locations in this count','dir.doneOf':'{done} of {total} done','dir.othersCounting':' · {n} still being counted by others','dir.noMatch':'Nothing in the WMS snapshot matches this count type — check with the office or switch count type.','dir.priority':'Priority {p}','dir.level':' · Level {l}','dir.inProgress':' · {n} in progress','dir.counters':' · {n} counters','dir.then':'Then: ',
+  'msg.skipped':'Skipped {loc} — it will be offered again at the end.',
+  'rec.last':'Last: <span class="mono">{ref}</span> · SKU <span class="mono">{sku}</span> × {qty}','rec.none':'No scans yet on this count.','err.save':'Save failed: {msg}',
+  'crumb.loc':'Loc','crumb.pallet':'Pallet','crumb.none':'none','crumb.change':'change','crumb.openM':' · open','crumb.closedM':' · closed','crumb.openF':' · open','crumb.closedF':' · closed','crumb.mixed':' · mixed','crumb.case':'Case','crumb.plt':' · plt ','crumb.caseLow':' · case ','unx.crumb.pallet':'⛔ Unexpected pallet','unx.crumb.case':'⛔ Unexpected case','unx.crumb.sku':'⛔ Unexpected SKU',
+  'lb.doneTitle':'⛔ Location already counted','lb.doneBy':'Count Complete by {who}{when}','lb.other':'another counter','lb.doneHint':'This location cannot be counted a second time from the scanner. If it needs a recount, the office issues one from the Dashboard (Recount), which clears the first count and puts the location back on the list.','lb.busyTitle':'⚠ Location being counted right now','lb.busyBy':'Started by {who}{when} on another scanner','lb.busyHint':'Pick a different location (follow your Next location). Use Take over only if that scanner died or the counter walked away — it moves the location to you without clearing their scans.',
+  'confirm.takeover':'Take over {loc}? The other scanner will no longer be able to finish it.',
+  'confirm.restart':'Restart {loc}? Everything scanned at this location so far on {id} will be cleared and you start it again.','err.restart':'Restart failed: {msg}','msg.restarted':'Location {loc} cleared ({n} scan line(s) removed). Scan it again from the start.',
+  'msg.caseCancelled':'Case {cs} cancelled — nothing recorded. Back to pallet {p}.','msg.cancelled':'Cancelled — back to Location.',
+  'err.claim':'Could not claim location: {msg}','msg.wrongType':'{loc} is a {t1} location and you are on the {t2} count — recording it anyway.','msg.notDirected':'Not the directed location ({d}) — recording {loc} anyway.',
+  'snap.title':'WMS snapshot at this location','snap.pallets':'Pallet Tags','snap.cases':'Cases','snap.skus':'SKUs','snap.qty':'Total Qty',
+  'snap.outOfScope':"<b>⚠ {loc} is OUTSIDE this count's scope.</b><br>{id} is scoped to <b>{type}</b>: <span class=\"mono\">{sv}</span>. Nothing at this location is in the WMS snapshot, so every scan here will show as <i>unexpected</i> and closed cases will need a manual quantity.<br><b>If this location should be counted, create a new count whose scope includes it.</b> Continue only if you intend to record it as found-stock.",
+  'snap.notIn':'Location not in snapshot — counting as-is (possible mislocation).',
+  'msg.mixedPallet':'⚠ Mixed SKU Pallet — {n} SKUs on {val}. Treating as open: scan each case.',
+  'prev.wmsSku':'WMS SKU: <b class="mono">{skus}</b> — verify SKU, then Record.','prev.palletFull':'WMS: {n} case(s), SKU(s): {skus} — verify SKU, then Record.','prev.palletNone':'No WMS data for this pallet; SKU will still be recorded.','prev.caseFull':'WMS: SKU {skus} × {qty} — verify SKU, then Record.',
+  'msg.scanSkuFirst':'Scan the SKU first.','msg.palletRecorded':'Recorded {n} case(s) on {p} — SKU {sku}.',
+  'opc.case':'Case <b class="mono">{val}</b> on pallet <b class="mono">{p}</b>','opc.wmsSku':' — WMS SKU <b class="mono">{skus}</b>','opc.hint':'Closed = sealed (record the WMS quantity). Open = partial, scan each unit inside.',
+  'each.openCaseOnPallet':'Open Case {cs} · on pallet','each.openCase':'Open Case {cs}','each.subCase':'Scan each unit (SKU or UPC) inside the case.','each.btnCase':'✓ Case Count Complete','each.eachOnly':'Each-Only Location — {loc}','each.subEachOnly':'Verify each-only location, then scan each unit.','each.btnDefault':'✓ Count Complete','each.phUnx':'Scan each unit','each.tail':' Each scan = +1.','each.tailEnter':' Each scan = +1 — or scan the SKU once to verify it, then tap <b>⌨ Enter Count</b>.','each.enterBtn':'⌨ Enter Count','each.enterHintScan':'Scan the SKU / UPC first to verify it — then you can enter a count.','each.enterHintSku':'Enter a count for {sku} (last scanned).','each.enterMsg':'Total unit count for {sku} at {loc}.\nThis replaces the scanned total for this SKU.','each.enterOk':'✓ Use this count','each.enterNeedNum':'Enter a whole number.','each.enterVariance':'⚠ The quantity entered ({n}) is outside of the approved variance.\n\nConfirm the count quantity entered is correct.\n\nYes = the count is correct · No = go back and re-enter','each.enterSet':'Count for {sku} set to {n}.','each.enterRemoved':'{sku} removed (count 0).','msg.qtyOnlyEachOnly':'Typed quantities are not allowed here — scan one unit at a time. ⌨ Enter Count is only available at each-only locations (no pallet tag, no case).','pill.entered':'entered',
+  'msg.caseRecorded':'Case {cs} recorded.','msg.caseRecordedUnits':'Case {cs} recorded ({n} units).','msg.caseRecordedSku':'Case {cs} recorded — SKU {sku}.','msg.caseRecordedSkuQty':'Case {cs} recorded — SKU {sku} × {qty}.',
+  'op.progress':'Scanned {n}{exp} case(s). Scan next, or Pallet Count Complete.','op.ofExpected':' of {n} expected',
+  'msg.upcToSku':'UPC {code} -> SKU {sku}',
+  'unx.sku.modal':'⛔ UNEXPECTED SKU\n\n{sku} is not in WMS at {loc}{c}.\n{where}\n\nTap OK, then keep scanning — one scan per unit present. Its units are recorded as unexpected stock.','unx.sku.inCase':' (case {c})','unx.sku.at':'WMS has this SKU at: {list}{more}.','unx.sku.none':'WMS has no record of this SKU in this count.','more':' +{n} more',
+  'pill.unexpected':'unexpected','rs.match':'match','rs.variance':'variance','rs.uncounted':'uncounted','rs.unexpected':'unexpected','rs.open':'in progress / not started',
+  'msg.noUnitsOpenCase':'No units recorded for open case {cs} — back to pallet {p}.','each.recorded':'Recorded {n} SKU line(s){ux}{ret}.','each.unx':' — {n} unexpected','each.onPallet':' — open case {cs} on pallet {p}',
+  'err.complete':'Mark complete failed: {msg}','msg.locComplete':'Location {loc} marked Count Complete.','msg.followNext':' Follow the Next location card.','msg.scanNext':' Scan next location.',
+  'unx.label.pallet':'Pallet Tag','unx.label.case':'Case LPN','unx.label.sku':'SKU','unx.title.pallet':'⛔ Unexpected Pallet Tag','unx.title.case':'⛔ Unexpected Case LPN','unx.title.sku':'⛔ Unexpected SKU','unx.this.pallet':'this pallet tag','unx.this.case':'this case LPN','unx.this.sku':'this SKU',
+  'unx.what':'<span class="mono">{val}</span> is not in WMS at <span class="mono">{loc}</span>.','unx.whyAt':'WMS has {th} at <b class="mono">{list}{more}</b> — it has been moved or mislocated.','unx.whyNone':'WMS has no record of {th} anywhere in count {id}.','unx.everyUnit':'every unit present — one scan per unit','unx.next':'<b>Next:</b> location <span class="mono">{loc}</span> is carried forward. You will scan: {steps}. Nothing is copied from WMS for unexpected stock.',
+  'unx.onPallet':'On pallet {p}{rec}','unx.recordedSoFar':' · {n} case(s) recorded so far','unx.eachTitle':'Unexpected stock · {sku}','unx.eachBtn':'✓ Record unexpected stock','unx.eachSub':'Scan <b>every unit</b> present — one scan per unit. Location <span class="mono">{loc}</span>{p}{c}.','unx.subPallet':' · pallet <span class="mono">{p}</span>','unx.subCase':' · case <span class="mono">{c}</span>',
+  'msg.unxPalletDone':'Unexpected pallet {p} recorded — {n} case(s).','msg.scanOneUnit':'Scan at least one unit — or Cancel if nothing is there.','msg.unxRecorded':'Unexpected stock recorded at {loc}: {units} unit(s){c}{p}.','msg.unxCase':' · case {c}','msg.unxPallet':' · pallet {p}',
+  'err.dashSummary':'Dashboard summary: {msg}','tile.pallets':'Pallets Counted','tile.cartons':'Cartons Counted','tile.eaches':'Eaches Counted','tile.locsToCount':'Locations to Count','tile.locsCompleted':'Locations Completed','tile.locsComplete':'Locations Complete','tile.matched':'Matched','tile.variance':'Variance','tile.unexpected':'Unexpected','tile.locAcc':'Location Accuracy','tile.ofCompleted':'of {n} completed','tile.noneCompleted':'no locations completed yet','tile.toRecount':'To Recount','tile.varUnx':'variance + unexpected',
+  'dash.progress':'<b>{type}:</b> {done}/{total} locations complete{ip} · counters: {names}','dash.noneYet':'<i>none yet</i>',
+  'error':'Error: {msg}','dash.thead.locs':'<tr><th>Location status</th><th>Location</th><th>Recounts</th><th>Lines</th><th>Matched</th><th>Variance</th><th>Unexpected</th><th>Uncounted</th><th>WMS</th><th>Counted</th><th></th></tr>',
+  'dash.linesShown':'{n} line(s) shown{cap} · count {id}','dash.linesCap':' (first 500 — filter/search to narrow)','dash.locsShown':'{n} location(s) shown{rc}{cap} · count {id}','dash.locsRecount':' — completed locations with a variance or unexpected stock','dash.locsCap':' (first 500 — search to narrow)',
+  'confirm.recount':'Request a recount of {loc}?\n\nThe location moves to "Recount requested" and goes to the Recount counters’ queue. The current count stays visible until a Recount counter starts it; then a new count pass begins.\n\nReason (optional):','err.recount':'Recount failed: {msg}','msg.recountIssued':'Recount #{n} requested for {loc} — it is now in the Recount queue.','msg.recountAlready':'{loc} is already in the recount queue.','msg.recountNotComplete':'{loc} has not been counted yet — nothing to recount.',
+  'act.cancelRecount':'✕ Cancel recount','act.recounting':'🔁 Recounting…','confirm.cancelRecount':'Cancel the recount request for {loc}? It returns to Complete with its current count.','msg.recountCancelled':'Recount request for {loc} cancelled.','err.cancelRecount':'Could not cancel: {msg}',
+  'rs.recount':'recount requested','rs.recounting':'recounting','tile.recountsReq':'Recounts Requested','tile.recountsSub':'{ip} in progress · {done} done','dash.f.recountQueue':'Recount queue','th.recounts':'Recounts',
+  'dash.locsRecountQueue':' — locations in the recount queue',
+  'err.export':'Export: {msg}','msg.prepRecon':'Preparing reconciliation export…','msg.exportedRecon':'Exported {n} reconciliation lines to CSV.','msg.prepScans':'Preparing scans export…','msg.exportedScans':'Exported {n} scan records to CSV.',
+  'conn.connecting':'connecting…','conn.connected':'connected','conn.offline':'offline','err.conn':'Supabase connection issue: {msg}'
+},
+es:{
+  /* header / tabs / modal */
+  'strip.who.title':'Toca para definir tu nombre','tab.create':'Crear trabajo de conteo','tab.tower':'Torre de control','tab.scan':'Escáner','tab.dash':'Tablero','theme.title':'Cambiar claro / oscuro','no':'No','yes':'Sí',
+  /* create count job */
+  'create.title':'Crear trabajo de conteo','create.intro':'Define los criterios de extracción de stock para un nuevo conteo. El nombre se formatea automáticamente como <span class="mono">C####-Cliente-Almacén-TextoLibre</span>.',
+  'lbl.customer':'Cliente','lbl.warehouse':'Almacén','lbl.scope':'Alcance',
+  'lbl.scope2':'Y además limitar a','scope2.none':'— sin segundo filtro —','create.scopeval2.l':'Valores (separados por coma)','lbl.ctype':'Tipo de conteo','create.ctype.hint':'Se muestra como una etiqueta pequeña en la Torre de control, en los escáneres y en el Tablero, para poder filtrar los conteos por tipo. Los conteos de Prueba son para capacitación y ensayos.',
+  'th.type':'Tipo','tower.allTypes':'Todos los tipos',
+  'gate.title.admin':'Acceso de oficina','gate.title.scanner':'Acceso del escáner','gate.sub.admin':'Ingresa el PIN de oficina de Contare para abrir la aplicación de administración. Se volverá a pedir después de cerrar el navegador por completo.','gate.sub.scanner':'Ingresa el PIN del escáner para empezar. Pídelo a la oficina si no lo tienes. Se volverá a pedir después de cerrar el navegador por completo.','gate.btn':'✓ Desbloquear','gate.empty':'Ingresa el PIN.','gate.bad':'PIN no aceptado. Tras 5 intentos fallidos este dispositivo se bloquea 10 minutos.','gate.err':'No se pudo verificar el PIN: {msg}',
+  'ct.physical':'Inventario físico','ct.cycle':'Conteo cíclico','ct.test':'Prueba','ct.physical.short':'IF','ct.cycle.short':'CC','ct.test.short':'PRUEBA',
+  'create.needScopeVals':'Ingresa al menos un valor para {type}.','create.sameScope':'El segundo filtro debe ser una dimensión distinta del primero (p. ej. Fila(s) + Zonas).','create.applyingScope2':'Aplicando segundo filtro — {type}: {vals}…','create.scope2Failed':'falló el segundo filtro: {msg}','create.scope2Empty':'Ninguna fila de la instantánea coincide con {type}: {vals} sobre el primer filtro — el conteo está vacío. Revisa los valores o elimina el conteo.',
+  'scope.whole_customer':'Cliente completo','scope.zones':'Zonas','scope.areas':'Área','scope.areas_pl':'Áreas','scope.rows':'Fila(s)','scope.locations':'Ubicaciones','scope.skus':'SKU(s)',
+  'create.scopeval.l':'Zonas / Áreas / Ubicaciones (separadas por coma)','create.scopeval.ph':'ej. CK, RK (áreas) · C1Z (zonas)','create.suffix.l':'Sufijo del nombre (texto libre)','create.suffix.ph':'ej. TURNO-NOCHE, SEM28, RECONTEO','create.preview.l':'Vista previa del nombre','create.btn':'＋ Crear trabajo de conteo y descargar instantánea del WMS',
+  /* control tower */
+  'tower.title':'Torre de control','refresh':'↻ Actualizar','tower.allScopes':'Todos los alcances','tower.allStatuses':'Todos los estados',
+  'status.pending':'Pendiente','status.open':'Abierto','status.under_review':'En revisión','status.complete':'Completo','status.closed':'Cerrado',
+  'tower.from.title':'Creado desde','tower.to.title':'Creado hasta','tower.search.ph':'buscar…',
+  'th.count':'Conteo','th.customer':'Cliente','th.warehouse':'Almacén','th.scope':'Alcance','th.status':'Estado','th.snapshot':'Instantánea','th.matched':'Coinciden','th.variance':'Diferencia','th.unexpected':'Inesperado','th.uncounted':'Sin contar','th.lineacc':'Prec. líneas','th.created':'Creado','th.actions':'Acciones',
+  /* scanner */
+  'scan.nosession':'<b>Sin conteo activo.</b> <span class="small">Ve a Crear trabajo de conteo o Torre de control y crea o reanuda un conteo primero.</span>',
+  'counter.before':'Antes de empezar','counter.name.l':'Tu nombre (contador)','counter.name.ph':'ej. María','counter.type.l':'Tipo de conteo',
+  'ctype.floor.btn':'🚶 Conteo de piso<small>Nivel A en cualquier lugar · FS · IB · OB · CK · PK y otras áreas a nivel de piso</small>','ctype.lift.btn':'🏗️ Conteo en altura<small>Racks (RK) · Niveles B, C, D, E, F</small>',
+  'ctype.recount.btn':'🔁 Reconteo<small>Solo ubicaciones que la oficina devolvió para reconteo · requiere PIN</small>','pin.l':'PIN de reconteo','pin.hint':'Pide a la oficina el PIN de reconteo de hoy. Se verifica cada vez que eliges Reconteo en esta pantalla.',
+  'ctype.recount.name':'Reconteo','ctype.recount.short':'Reconteo','ctype.recount.low':'reconteo',
+  'pin.required':'Ingresa el PIN de reconteo.','pin.invalid':'PIN no aceptado. Consulta con la oficina — tras 5 intentos fallidos este escáner se bloquea 10 minutos.',
+  'dir.recountRole':'Cola de reconteo · contador n.º {seq}','dir.recountMeta':'Reconteo n.º {n} · solicitado por {who}{when}{why}','dir.recountWhy':' — «{r}»','dir.recountAllDone':'La cola de reconteo está vacía','dir.recountNone':'No se han solicitado reconteos en este conteo','dir.recountDoneOf':'{done} de {total} reconteos listos','dir.locType':' · ubicación de {t}',
+  'lb.rqTitle':'🔁 La ubicación está en la cola de reconteo','lb.rqBy':'Reconteo n.º {n} solicitado por {who}{when}','lb.rqHint':'Solo un contador de Reconteo puede contar esta ubicación ahora. Sigue tu Siguiente ubicación; si te toca hacer el reconteo, toca el chip de nombre y elige Reconteo (requiere PIN).',
+  'lb.nqTitle':'⛔ No está en la cola de reconteo','lb.nqHint':'Estás en el conteo de Reconteo, así que solo puedes contar ubicaciones que la oficina devolvió. Sigue la tarjeta Siguiente ubicación o toca el chip de nombre para cambiar a Conteo de piso o en altura.',
+  'note.recount':'<b>🔁 Reconteo n.º {n}</b> — solicitado por {who}{when}{why}. El conteo anterior queda archivado; todo lo que escanees ahora es el nuevo conteo de esta ubicación.',
+  'act.cancelRecount':'✕ Cancelar reconteo','act.recounting':'🔁 Recontando…','confirm.cancelRecount':'¿Cancelar la solicitud de reconteo de {loc}? Vuelve a Completa con su conteo actual.','msg.recountCancelled':'Solicitud de reconteo de {loc} cancelada.','err.cancelRecount':'No se pudo cancelar: {msg}','msg.recountAlready':'{loc} ya está en la cola de reconteo.','msg.recountNotComplete':'{loc} aún no se ha contado — no hay nada que recontar.',
+  'rs.recount':'reconteo solicitado','rs.recounting':'recontando','tile.recountsReq':'Reconteos solicitados','tile.recountsSub':'{ip} en progreso · {done} listos','dash.f.recountQueue':'Cola de reconteo','th.recounts':'Reconteos','dash.locsRecountQueue':' — ubicaciones en la cola de reconteo',
+  'counter.hint':'Cada escaneo se registra con este nombre. Luego la app te indica qué ubicación contar. Toca el chip de nombre arriba para cambiar el nombre o el tipo de conteo.','counter.start':'✓ Empezar a contar',
+  'pick.title':'Elige un conteo','pick.hint':'Solo se listan los conteos abiertos. Los conteos se crean y revisan desde la app de escritorio.',
+  'dir.title':'Siguiente ubicación','dir.refresh.title':'Actualizar','dir.go':'Ve ahí y escanea el código de barras de la ubicación.','dir.skip':'Omitir →',
+  'lb.ok':'OK · Escanear siguiente ubicación','lb.takeover':'Tomar el control','lb.recount':'↺ Reconteo (admin)',
+  'step1.title':'Paso 1 · Ubicación','step1.l':'Escanear código de ubicación','step1.ph':'ej. RK-B1R-00-W-8-B-1','step1.hint':'Escanea o escribe la ubicación y presiona Enter.',
+  'step2.title':'Paso 2 · Etiqueta de pallet','q.palletAvail':'¿Hay una etiqueta de pallet disponible?','yes.big':'SÍ','no.big':'NO','hint.morePallets':'¿Más pallets/cajas en esta ubicación? Sigue escaneando — cada uno se registra y vuelve aquí. Presiona abajo solo cuando toda la ubicación esté lista.','btn.locComplete':'✓ Conteo de ubicación completo',
+  'pallet.title':'Etiqueta de pallet','pallet.scan.l':'Escanear etiqueta de pallet','pallet.ph':'ej. PLT-ELG-AEG-Y25-0028979',
+  'q.palletOpen':'¿El pallet está <u>abierto</u>?','hint.palletOpen':'Cerrado = completo/sellado (registra todas las cajas automáticamente). Abierto = faltan cajas o hay cajas abiertas — escanea cada caja y luego indica si está abierta.',
+  'yes.open.m':'SÍ · Abierto','no.closed.m':'NO · Cerrado','yes.open.f':'SÍ · Abierta','no.closed.f':'NO · Cerrada',
+  'palletsku.title':'Pallet cerrado · Verificar SKU','scan.sku.l':'Escanear SKU','palletsku.ph':'Escanea el SKU del pallet','palletsku.btn':'✓ SKU verificado — Registrar pallet',
+  'palletcases.title':'Pallet abierto · Escanear cada caja','scan.case.l':'Escanear número de caja','palletcases.ph':'Escanea la caja del pallet','palletcases.btn':'✓ Conteo de pallet completo',
+  'opc.title':'Pallet abierto · Caja','q.caseOpen':'¿La caja está <u>abierta</u>?','opc.hint':'Cerrada = sellada (registra la cantidad del WMS). Abierta = parcial, escanea cada unidad dentro.',
+  'step3.title':'Paso 3 · Caja','q.caseAvail':'¿Hay un número de caja disponible?','hint.noPalletMore':'Sin etiquetas de pallet en esta ubicación — ¿más cajas/unidades aquí? Sigue escaneando; cada una se registra y vuelve aquí. Presiona abajo solo cuando toda la ubicación esté lista.',
+  'case.title':'Número de caja','case.ph':'ej. CS-ELG-AEG-Y25-0340556','case.short':'Caja',
+  'casesku.title':'Caja cerrada · Verificar SKU','casesku.ph':'Escanea el SKU de la caja','casesku.btn':'✓ SKU verificado — Registrar caja',
+  'each.l':'Escanear unidad (SKU / UPC)','each.ph':'Escanea la unidad (SKU / UPC)','th.sku':'SKU','th.qty':'Cant.','cancel':'Cancelar',
+  'uack.btn':'OK — registrarlo como stock encontrado',
+  'upallet.title':'Stock inesperado · Etiqueta de pallet','upallet.l':'Escanea la etiqueta del pallet donde está este stock','upallet.ph':'Escanea la etiqueta de pallet','upallet.none':'Sin etiqueta de pallet',
+  'ucase.title':'Stock inesperado · LPN de caja','ucase.l':'Escanea el LPN de la caja','ucase.ph':'Escanea el LPN de caja','ucase.none':'Sin LPN de caja · unidades sueltas','ucase.palletDone':'✓ Pallet listo',
+  'usku.title':'Stock inesperado · SKU','usku.l':'Escanea el SKU / UPC','usku.ph':'Escanea el SKU o UPC','usku.hint':'A continuación escanearás cada unidad presente, un escaneo por unidad.',
+  'restartLoc':'↺ Reiniciar ubicación',
+  'rec.title':'Escaneos recientes (en vivo)','th.location':'Ubicación','th.pallet':'Pallet','th.case':'Caja','th.by':'Por',
+  /* dashboard */
+  'dash.nosession':'<b>Sin conteo activo.</b> <span class="small">Crea o reanuda un conteo primero.</span>',
+  'dash.countData':'Datos del conteo','dash.locMetrics':'Métricas de ubicación <span style="font-weight:400;text-transform:none;letter-spacing:0">— una ubicación Coincide solo cuando todas sus líneas coinciden; una sola caja faltante convierte toda la ubicación en Diferencia</span>',
+  'dash.recon.title':'Conciliación — Escaneado vs instantánea del WMS','dash.search.ph':'buscar sku / caja / ubicación',
+  'dash.f.all':'Todos','dash.f.variance':'Diferencias','dash.f.uncounted':'Sin contar','dash.f.unexpected':'Inesperados','dash.f.match':'Coinciden','dash.f.locRecount':'Ubicaciones por recontar','dash.f.locAll':'Todas las ubicaciones (por estado)',
+  'dash.exportRecon':'⬇ CSV conciliación','dash.exportScans':'⬇ CSV escaneos',
+  'dash.thead.lines':'<tr><th>Estado</th><th>Ubicación</th><th>Etiqueta de pallet</th><th>Caja</th><th>SKU</th><th>Producto</th><th>WMS</th><th>Contado</th><th>Δ</th><th></th></tr>',
+  'footer.app':'Conteo físico WMS',
+  /* strings built in JS */
+  'counter.job':'Conteo: {id} · {cust}','counter.prompt':'Tu nombre (contador):','msg.enterNameStart':'Ingresa tu nombre para empezar a contar.','msg.chooseType':'Elige Conteo de piso, Conteo en altura o Reconteo.','counter.countingAs':'Contando como {name}','ready':'Listo','counter.ready':'{who} — {type}.',
+  'ctype.floor.name':'Conteo de piso','ctype.lift.name':'Conteo en altura','ctype.floor.short':'Piso','ctype.lift.short':'Altura','ctype.floor.low':'piso','ctype.lift.low':'altura',
+  'err.register':'No se pudo registrar el contador: {msg}',
+  'badge.counter':'Contador: {name}','badge.setName':'definir nombre','badge.noCount':'Sin conteo activo','strip.noCount':'Sin conteo','strip.jobTitle':'{cust} · {wh} — toca para cambiar','strip.pickTitle':'Toca para elegir un conteo','strip.setName':'Definir nombre',
+  'loading':'Cargando…','err.load':'Error al cargar: {msg}','pick.none':'No hay conteos abiertos. Pide a la oficina que cree uno.','pick.current':'Actual','pick.use':'Usar',
+  'msg.counting':'Contando {id} — {cust}','rec.hide':'▴ ocultar','rec.show':'▾ mostrar',
+  'tower.allCustomers':'Todos los clientes','tower.allWarehouses':'Todos los almacenes','err.loadCounts':'Error al cargar conteos: {msg}',
+  'act.view':'Ver','act.resume':'Reanudar','act.review':'Revisar','act.complete':'Completar','act.close':'Cerrar','act.delete':'Eliminar conteo','act.recount':'↺ Reconteo',
+  'tower.noMatch':'Ningún conteo coincide con los filtros actuales.','tower.shown':'Se muestran {n} de {total} conteo(s)',
+  'confirm.close':'¿Cerrar este conteo? Se marcará como Cerrado y se quitará del trabajo activo. Aún podrás verlo.','err.close':'Error al cerrar: {msg}','msg.closed':'Conteo cerrado.',
+  'confirm.delete':'¿ELIMINAR permanentemente el conteo {label}? Esto borra su instantánea del WMS y todos los escaneos. No se puede deshacer.','err.delete':'Error al eliminar: {msg}','msg.deleted':'Conteo {label} eliminado.',
+  'msg.lockedView':'El conteo {id} está verificado y bloqueado — solo lectura.','msg.reopened':'Conteo {id} reabierto para contar.','msg.active':'Conteo activo: {id} — {cust}',
+  'err.update':'Error al actualizar: {msg}','msg.underReview':'Conteo pasado a En revisión (bloqueo parcial). Usa Reanudar para reabrirlo y seguir contando.',
+  'confirm.complete':'Al seleccionar «Completar» estás verificando el conteo. El estado pasará a Verificado y quedará bloqueado. ¿Deseas continuar?','err.completeCount':'Error al completar: {msg}','msg.verified':'Conteo verificado y bloqueado.',
+  'scopeHint.whole_customer.l':'(cliente completo — no se necesitan valores)','scopeHint.whole_customer.p':'no se necesitan valores','scopeHint.zones.l':'Zonas (separadas por coma)','scopeHint.zones.p':'ej. C1Z, CK','scopeHint.areas.l':'Áreas (separadas por coma)','scopeHint.areas.p':'ej. CK, RK','scopeHint.rows.l':'Fila(s) (separadas por coma)','scopeHint.rows.p':'ej. AD, AR  (4.º segmento de la ubicación)','scopeHint.locations.l':'Ubicaciones (separadas por coma)','scopeHint.locations.p':'ej. RK-A1R-00-AD-9-A-1','scopeHint.skus.l':'SKU(s) (separados por coma)','scopeHint.skus.p':'ej. 237OB01, 100NB12',
+  'msg.enterName':'Primero ingresa tu nombre.','create.refreshingProducts':'Actualizando catálogo de productos (UPC)... página {p}/{n}','create.pulling':'Descargando instantánea del WMS… página {page}/{last} · {n} filas de {cust}','create.snapReady':'Instantánea lista: {n} filas congeladas para {id}.','create.created':'Conteo {id} creado — la instantánea tiene {n} filas.','err.create':'Error al crear: {msg}',
+  'err.directive':'Directiva: {msg}','dir.role':'{type} · contador n.º {seq} {dirn}','dir.asc':'↑ prioridad baja→alta','dir.desc':'↓ prioridad alta→baja','dir.allDone':'Todas las ubicaciones de {type} contadas','dir.none':'No hay ubicaciones de {type} en este conteo','dir.doneOf':'{done} de {total} listas','dir.othersCounting':' · {n} aún en conteo por otros','dir.noMatch':'Nada en la instantánea del WMS coincide con este tipo de conteo — consulta con la oficina o cambia el tipo de conteo.','dir.priority':'Prioridad {p}','dir.level':' · Nivel {l}','dir.inProgress':' · {n} en progreso','dir.counters':' · {n} contadores','dir.then':'Luego: ',
+  'msg.skipped':'Omitida {loc} — se ofrecerá de nuevo al final.',
+  'rec.last':'Última: <span class="mono">{ref}</span> · SKU <span class="mono">{sku}</span> × {qty}','rec.none':'Aún no hay escaneos en este conteo.','err.save':'Error al guardar: {msg}',
+  'crumb.loc':'Ubic','crumb.pallet':'Pallet','crumb.none':'ninguno','crumb.change':'cambiar','crumb.openM':' · abierto','crumb.closedM':' · cerrado','crumb.openF':' · abierta','crumb.closedF':' · cerrada','crumb.mixed':' · mixto','crumb.case':'Caja','crumb.plt':' · plt ','crumb.caseLow':' · caja ','unx.crumb.pallet':'⛔ Pallet inesperado','unx.crumb.case':'⛔ Caja inesperada','unx.crumb.sku':'⛔ SKU inesperado',
+  'lb.doneTitle':'⛔ Ubicación ya contada','lb.doneBy':'Conteo completado por {who}{when}','lb.other':'otro contador','lb.doneHint':'Esta ubicación no se puede contar una segunda vez desde el escáner. Si necesita un reconteo, la oficina lo emite desde el Tablero (Reconteo), lo que borra el primer conteo y devuelve la ubicación a la lista.','lb.busyTitle':'⚠ Ubicación en conteo en este momento','lb.busyBy':'Iniciada por {who}{when} en otro escáner','lb.busyHint':'Elige otra ubicación (sigue tu Siguiente ubicación). Usa Tomar el control solo si ese escáner se apagó o el contador se fue — te pasa la ubicación sin borrar sus escaneos.',
+  'confirm.takeover':'¿Tomar el control de {loc}? El otro escáner ya no podrá terminarla.',
+  'confirm.restart':'¿Reiniciar {loc}? Todo lo escaneado en esta ubicación hasta ahora en {id} se borrará y la empezarás de nuevo.','err.restart':'Error al reiniciar: {msg}','msg.restarted':'Ubicación {loc} borrada ({n} línea(s) de escaneo eliminadas). Escanéala de nuevo desde el inicio.',
+  'msg.caseCancelled':'Caja {cs} cancelada — nada registrado. De vuelta al pallet {p}.','msg.cancelled':'Cancelado — de vuelta a Ubicación.',
+  'err.claim':'No se pudo reclamar la ubicación: {msg}','msg.wrongType':'{loc} es una ubicación de {t1} y estás en el conteo de {t2} — se registra de todas formas.','msg.notDirected':'No es la ubicación indicada ({d}) — se registra {loc} de todas formas.',
+  'snap.title':'Instantánea del WMS en esta ubicación','snap.pallets':'Etiquetas de pallet','snap.cases':'Cajas','snap.skus':'SKU','snap.qty':'Cant. total',
+  'snap.outOfScope':'<b>⚠ {loc} está FUERA del alcance de este conteo.</b><br>{id} tiene alcance <b>{type}</b>: <span class="mono">{sv}</span>. Nada en esta ubicación está en la instantánea del WMS, así que cada escaneo aquí aparecerá como <i>inesperado</i> y las cajas cerradas necesitarán una cantidad manual.<br><b>Si esta ubicación debe contarse, crea un nuevo conteo cuyo alcance la incluya.</b> Continúa solo si quieres registrarla como stock encontrado.',
+  'snap.notIn':'La ubicación no está en la instantánea — se cuenta tal cual (posible error de ubicación).',
+  'msg.mixedPallet':'⚠ Pallet con SKU mixtos — {n} SKU en {val}. Se trata como abierto: escanea cada caja.',
+  'prev.wmsSku':'SKU en WMS: <b class="mono">{skus}</b> — verifica el SKU y luego Registrar.','prev.palletFull':'WMS: {n} caja(s), SKU: {skus} — verifica el SKU y luego Registrar.','prev.palletNone':'Sin datos del WMS para este pallet; el SKU se registrará igual.','prev.caseFull':'WMS: SKU {skus} × {qty} — verifica el SKU y luego Registrar.',
+  'msg.scanSkuFirst':'Primero escanea el SKU.','msg.palletRecorded':'Registradas {n} caja(s) en {p} — SKU {sku}.',
+  'opc.case':'Caja <b class="mono">{val}</b> en pallet <b class="mono">{p}</b>','opc.wmsSku':' — SKU en WMS <b class="mono">{skus}</b>',
+  'each.openCaseOnPallet':'Caja abierta {cs} · en pallet','each.openCase':'Caja abierta {cs}','each.subCase':'Escanea cada unidad (SKU o UPC) dentro de la caja.','each.btnCase':'✓ Conteo de caja completo','each.eachOnly':'Ubicación solo unidades — {loc}','each.subEachOnly':'Verifica que la ubicación sea solo de unidades y luego escanea cada unidad.','each.btnDefault':'✓ Conteo completo','each.phUnx':'Escanea cada unidad','each.tail':' Cada escaneo = +1.','each.tailEnter':' Cada escaneo = +1 — o escanea el SKU una vez para verificarlo y luego toca <b>⌨ Ingresar cantidad</b>.','each.enterBtn':'⌨ Ingresar cantidad','each.enterHintScan':'Escanea primero el SKU / UPC para verificarlo — después podrás ingresar la cantidad.','each.enterHintSku':'Ingresa la cantidad de {sku} (último escaneado).','each.enterMsg':'Total de unidades de {sku} en {loc}.\nEsto reemplaza el total escaneado de este SKU.','each.enterOk':'✓ Usar esta cantidad','each.enterNeedNum':'Ingresa un número entero.','each.enterVariance':'⚠ La cantidad ingresada ({n}) está fuera de la variación aprobada.\n\nConfirma que la cantidad contada es correcta.\n\nSí = la cantidad es correcta · No = volver y corregir','each.enterSet':'Cantidad de {sku} fijada en {n}.','each.enterRemoved':'{sku} eliminado (cantidad 0).','msg.qtyOnlyEachOnly':'Aquí no se permite escribir cantidades — escanea una unidad a la vez. ⌨ Ingresar cantidad solo está disponible en ubicaciones de solo unidades (sin pallet, sin caja).','pill.entered':'ingresado',
+  'msg.caseRecorded':'Caja {cs} registrada.','msg.caseRecordedUnits':'Caja {cs} registrada ({n} unidades).','msg.caseRecordedSku':'Caja {cs} registrada — SKU {sku}.','msg.caseRecordedSkuQty':'Caja {cs} registrada — SKU {sku} × {qty}.',
+  'op.progress':'Escaneadas {n}{exp} caja(s). Escanea la siguiente o Conteo de pallet completo.','op.ofExpected':' de {n} esperadas',
+  'msg.upcToSku':'UPC {code} -> SKU {sku}',
+  'unx.sku.modal':'⛔ SKU INESPERADO\n\n{sku} no está en el WMS en {loc}{c}.\n{where}\n\nToca OK y sigue escaneando — un escaneo por unidad presente. Sus unidades se registran como stock inesperado.','unx.sku.inCase':' (caja {c})','unx.sku.at':'El WMS tiene este SKU en: {list}{more}.','unx.sku.none':'El WMS no tiene registro de este SKU en este conteo.','more':' +{n} más',
+  'pill.unexpected':'inesperado','rs.match':'coincide','rs.variance':'diferencia','rs.uncounted':'sin contar','rs.unexpected':'inesperado','rs.open':'en progreso / sin iniciar',
+  'msg.noUnitsOpenCase':'Sin unidades registradas para la caja abierta {cs} — de vuelta al pallet {p}.','each.recorded':'Registradas {n} línea(s) de SKU{ux}{ret}.','each.unx':' — {n} inesperadas','each.onPallet':' — caja abierta {cs} en pallet {p}',
+  'err.complete':'Error al marcar como completa: {msg}','msg.locComplete':'Ubicación {loc} marcada como Conteo completo.','msg.followNext':' Sigue la tarjeta Siguiente ubicación.','msg.scanNext':' Escanea la siguiente ubicación.',
+  'unx.label.pallet':'Etiqueta de pallet','unx.label.case':'LPN de caja','unx.label.sku':'SKU','unx.title.pallet':'⛔ Etiqueta de pallet inesperada','unx.title.case':'⛔ LPN de caja inesperado','unx.title.sku':'⛔ SKU inesperado','unx.this.pallet':'esta etiqueta de pallet','unx.this.case':'este LPN de caja','unx.this.sku':'este SKU',
+  'unx.what':'<span class="mono">{val}</span> no está en el WMS en <span class="mono">{loc}</span>.','unx.whyAt':'El WMS tiene {th} en <b class="mono">{list}{more}</b> — se movió o se ubicó en otro lugar.','unx.whyNone':'El WMS no tiene registro de {th} en ningún lugar del conteo {id}.','unx.everyUnit':'cada unidad presente — un escaneo por unidad','unx.next':'<b>Siguiente:</b> la ubicación <span class="mono">{loc}</span> se mantiene. Escanearás: {steps}. Nada se copia del WMS para stock inesperado.',
+  'unx.onPallet':'En pallet {p}{rec}','unx.recordedSoFar':' · {n} caja(s) registradas hasta ahora','unx.eachTitle':'Stock inesperado · {sku}','unx.eachBtn':'✓ Registrar stock inesperado','unx.eachSub':'Escanea <b>cada unidad</b> presente — un escaneo por unidad. Ubicación <span class="mono">{loc}</span>{p}{c}.','unx.subPallet':' · pallet <span class="mono">{p}</span>','unx.subCase':' · caja <span class="mono">{c}</span>',
+  'msg.unxPalletDone':'Pallet inesperado {p} registrado — {n} caja(s).','msg.scanOneUnit':'Escanea al menos una unidad — o Cancelar si no hay nada.','msg.unxRecorded':'Stock inesperado registrado en {loc}: {units} unidad(es){c}{p}.','msg.unxCase':' · caja {c}','msg.unxPallet':' · pallet {p}',
+  'err.dashSummary':'Resumen del tablero: {msg}','tile.pallets':'Pallets contados','tile.cartons':'Cajas contadas','tile.eaches':'Unidades contadas','tile.locsToCount':'Ubicaciones por contar','tile.locsCompleted':'Ubicaciones completadas','tile.locsComplete':'Ubicaciones completas','tile.matched':'Coinciden','tile.variance':'Diferencia','tile.unexpected':'Inesperado','tile.locAcc':'Precisión de ubicación','tile.ofCompleted':'de {n} completadas','tile.noneCompleted':'aún no hay ubicaciones completadas','tile.toRecount':'Por recontar','tile.varUnx':'diferencia + inesperado',
+  'dash.progress':'<b>{type}:</b> {done}/{total} ubicaciones completas{ip} · contadores: {names}','dash.noneYet':'<i>ninguno aún</i>',
+  'error':'Error: {msg}','dash.thead.locs':'<tr><th>Estado de ubicación</th><th>Ubicación</th><th>Reconteos</th><th>Líneas</th><th>Coinciden</th><th>Diferencia</th><th>Inesperado</th><th>Sin contar</th><th>WMS</th><th>Contado</th><th></th></tr>',
+  'dash.linesShown':'{n} línea(s) mostradas{cap} · conteo {id}','dash.linesCap':' (primeras 500 — filtra o busca para acotar)','dash.locsShown':'{n} ubicación(es) mostradas{rc}{cap} · conteo {id}','dash.locsRecount':' — ubicaciones completadas con diferencia o stock inesperado','dash.locsCap':' (primeras 500 — busca para acotar)',
+  'confirm.recount':'¿Solicitar un reconteo de {loc}?\n\nLa ubicación pasa a «Reconteo solicitado» y entra en la cola de los contadores de Reconteo. El conteo actual sigue visible hasta que un contador de Reconteo la inicie; entonces empieza un nuevo pase de conteo.\n\nMotivo (opcional):','err.recount':'Error en el reconteo: {msg}','msg.recountIssued':'Reconteo n.º {n} solicitado para {loc} — ya está en la cola de Reconteo.',
+  'err.export':'Exportación: {msg}','msg.prepRecon':'Preparando exportación de conciliación…','msg.exportedRecon':'Se exportaron {n} líneas de conciliación a CSV.','msg.prepScans':'Preparando exportación de escaneos…','msg.exportedScans':'Se exportaron {n} registros de escaneo a CSV.',
+  'conn.connecting':'conectando…','conn.connected':'conectado','conn.offline':'sin conexión','err.conn':'Problema de conexión con Supabase: {msg}'
+}};
+/* t(key, vars): current language, falling back to English, then the key itself. {name} placeholders are filled from vars. */
+function t(k,v){let s=I18N[LANG]&&I18N[LANG][k];if(s==null)s=I18N.en[k];if(s==null)s=k;if(v)for(const n in v)s=s.split('{'+n+'}').join(v[n]);return s;}
+/* tk: translate when the key exists, else return the raw value (DB codes such as scope_type / status) */
+function tk(k,fb){return ((k in I18N.en)||(k in I18N.es))?t(k):fb;}
+function scopeLabel(s){return tk('scope.'+s,s);}
+function rsLabel(s){return tk('rs.'+s,s);}
+function ctypeKey(c){const k=c||ctype();return k==='lift'?'lift':k==='recount'?'recount':'floor';}
+function ctypeName(c){return t('ctype.'+ctypeKey(c)+'.name');}
+function ctypeShort(c){return t('ctype.'+ctypeKey(c)+'.short');}
+function ctypeLow(c){return t('ctype.'+ctypeKey(c)+'.low');}
+function LOC(){return LANG==='es'?['es-419','es']:undefined;}   // date formatting locale; EN keeps the browser default
+function setConn(s){const el=document.getElementById('conn-state');if(!el)return;el.dataset.state=s;el.textContent=t('conn.'+s);}
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(!(k in I18N.en))I18N.en[k]=el.innerHTML;el.innerHTML=t(k);});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{const k=el.dataset.i18nPh;if(!(k in I18N.en))I18N.en[k]=el.placeholder;el.placeholder=t(k);});
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{const k=el.dataset.i18nTitle;if(!(k in I18N.en))I18N.en[k]=el.title;el.title=t(k);});
+}
+function applyLang(l){
+  LANG=(l==='es')?'es':'en'; localStorage.setItem('pc_lang',LANG);
+  document.documentElement.lang=LANG;
+  const b=document.getElementById('lang-btn'); if(b){b.textContent=LANG.toUpperCase();b.title=LANG==='es'?'Switch to English':'Cambiar a español';}
+  applyI18n();
+  // re-render what is built in JS and currently on screen
+  const cs=document.getElementById('conn-state'); if(cs&&cs.dataset.state)setConn(cs.dataset.state);
+  const oc=document.querySelector('#tf-customer option[value=""]'); if(oc)oc.textContent=t('tower.allCustomers');
+  const ow=document.querySelector('#tf-warehouse option[value=""]'); if(ow)ow.textContent=t('tower.allWarehouses');
+  const sc=document.getElementById('nc-scope'); if(sc&&sc.value!=='whole_customer')scopeHint();
+  const gv=document.getElementById('gate-ov'); if(gv&&!gv.classList.contains('hidden')){document.getElementById('gate-title').textContent=t(SCANNER?'gate.title.scanner':'gate.title.admin');document.getElementById('gate-sub').textContent=t(SCANNER?'gate.sub.scanner':'gate.sub.admin');document.getElementById('gate-btn').textContent=t('gate.btn');}
+  const rc=document.getElementById('rec-card'),rk=document.getElementById('rec-caret'); if(rc&&rk)rk.textContent=rc.classList.contains('open')?t('rec.hide'):t('rec.show');
+  updateBadges();
+  if(TOWER.length)renderTower();
+  if(directive)renderDirective();
+  if(flow.location||flow.unx)crumbs();
+  if(session){loadRecentScans();if(!document.getElementById('view-dash').classList.contains('hidden'))refreshDash();}
+  // scanner gates: the count picker list and the "counting as" line are fetched/built in JS
+  const pk=document.getElementById('scan-pick'); if(pk&&!pk.classList.contains('hidden'))loadScanPicker();
+  const cc=document.getElementById('scan-counter'); if(cc&&!cc.classList.contains('hidden'))document.getElementById('scan-counter-job').textContent=session?t('counter.job',{id:session.count_id,cust:session.customer.name}):'';
+}
+function toggleLang(){applyLang(LANG==='es'?'en':'es');}
+
+/* ---------- sessions ---------- */
+async function loadRefLists(){
+  const {data:cust} = await sb.from('customers').select('*').order('name');
+  const {data:wh} = await sb.from('warehouses').select('*').order('name');
+  CUST=cust||[];WH=wh||[];
+  document.getElementById('nc-customer').innerHTML=CUST.map(c=>`<option value="${c.id}" data-vendor="${c.vendor_id}" data-code="${c.code||''}">${c.name} (${c.code||c.vendor_id})</option>`).join('');
+  document.getElementById('nc-warehouse').innerHTML=WH.map(w=>`<option value="${w.id}" data-ext="${w.external_id||''}" ${w.id===32?'selected':''}>${w.name}</option>`).join('');
+  document.getElementById('tf-customer').innerHTML=`<option value="">${t('tower.allCustomers')}</option>`+CUST.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  document.getElementById('tf-warehouse').innerHTML=`<option value="">${t('tower.allWarehouses')}</option>`+WH.map(w=>`<option value="${w.name}">${w.name}</option>`).join('');
+  previewName();
+}
+/* ---------- count naming ---------- */
+function whCode(ext,name){const m=(ext||'').match(/^[A-Za-z]+/);return (m?m[0]:(name||'').slice(0,3)).toUpperCase();}
+function cleanFree(s){return (s||'').trim().toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+function buildName(num){
+  const co=document.getElementById('nc-customer'),wo=document.getElementById('nc-warehouse');
+  const c=co.options[co.selectedIndex],w=wo.options[wo.selectedIndex];
+  const code=c?(c.dataset.code||''):'',wc=w?whCode(w.dataset.ext,w.textContent):'';
+  const ft=cleanFree(document.getElementById('nc-freetext').value);
+  return `${num||'C####'}-${code}-${wc}${ft?'-'+ft:''}`;
+}
+function previewName(){const el=document.getElementById('nc-nameprev');if(el)el.value=buildName(NEXTNUM);}
+/* ---------- Control Tower ---------- */
+function statusBucket(st){return st==='verified'?'complete':st==='closed'?'closed':st==='under_review'?'under_review':st==='open'?'pending':'open';}
+function statusLabel(b){return tk('status.'+b,b);}
+function pillClass(b){return b==='under_review'?'review':b;}
+async function loadTower(){
+  const [sres,sumres]=await Promise.all([
+    sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').order('created_at',{ascending:false}),
+    sb.from('v_reconciliation_summary').select('*')
+  ]);
+  if(sres.error){flash('bad',t('err.loadCounts',{msg:sres.error.message}));return;}
+  const sess=sres.data||[];const sumBy={};(sumres.data||[]).forEach(s=>sumBy[s.session_id]=s);
+  const snapBy={};
+  await Promise.all(sess.map(async s=>{const {count}=await sb.from('wms_snapshot_rows').select('*',{count:'exact',head:true}).eq('session_id',s.id);snapBy[s.id]=count||0;}));
+  TOWER=sess.map(s=>({...s,summary:sumBy[s.id]||{},snap:snapBy[s.id]||0}));
+  renderTower();
+}
+function renderTower(){
+  const g=id=>document.getElementById(id).value;
+  const fc=g('tf-customer'),fw=g('tf-warehouse'),fs=g('tf-scope'),fct=g('tf-ctype'),fst=g('tf-status'),ff=g('tf-from'),ft=g('tf-to'),fq=g('tf-search').trim().toLowerCase();
+  const tb=document.querySelector('#tower-tbl tbody');tb.innerHTML='';let shown=0;
+  for(const s of TOWER){
+    const b=statusBucket(s.status);
+    if(fc&&(s.customer?.name||'')!==fc)continue;
+    if(fw&&(s.warehouse?.name||'')!==fw)continue;
+    if(fs&&s.scope_type!==fs&&s.scope_type2!==fs)continue;      // either scope dimension matches the filter
+    if(fct&&ctKey(s.count_type)!==fct)continue;
+    if(fst&&b!==fst)continue;
+    const created=new Date(s.created_at);
+    if(ff&&created<new Date(ff+'T00:00:00'))continue;
+    if(ft&&created>new Date(ft+'T23:59:59'))continue;
+    if(fq&&!(`${s.count_id} ${s.customer?.name||''} ${s.warehouse?.name||''} ${s.scope_type} ${(s.scope_values||[]).join(' ')} ${s.scope_type2||''} ${(s.scope_values2||[]).join(' ')} ${ctName(s.count_type)}`.toLowerCase().includes(fq)))continue;
+    shown++;
+    const sm=s.summary||{};const lines=+sm.lines||0;const acc=lines?((+sm.matched||0)/lines*100):0;
+    const isV=s.status==='verified',isC=s.status==='closed';
+    const canReview=!isV&&!isC&&s.status!=='under_review',canComplete=s.status==='under_review',canClose=!isV&&!isC;
+    const acts=`<button class="btn ok sm" onclick="resumeSession('${s.id}')">${isV||isC?t('act.view'):t('act.resume')}</button>`+
+      ` <button class="btn sm" style="background:var(--brand)" onclick="setUnderReview('${s.id}')" ${canReview?'':'disabled'}>${t('act.review')}</button>`+
+      ` <button class="btn sm" style="background:var(--ok)" onclick="completeCount('${s.id}')" ${canComplete?'':'disabled'}>${t('act.complete')}</button>`+
+      ` <button class="btn ghost sm" onclick="closeCount('${s.id}')" ${canClose?'':'disabled'}>${t('act.close')}</button>`+
+      ` <span class="del" title="${t('act.delete')}" onclick="deleteCount('${s.id}','${s.count_id}')">🗑</span>`;
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td class="mono">${s.count_id}</td><td>${ctChip(s.count_type)}</td><td>${s.customer?.name||''}</td><td>${s.warehouse?.name||''}</td>
+      <td title="${scopeText(s).replace(/"/g,'&quot;')}">${scopeLabel(s.scope_type)}${s.scope_type2?' <span class="small">+ '+scopeLabel(s.scope_type2)+'</span>':''}</td><td><span class="pill ${pillClass(b)}">${statusLabel(b)}</span></td>
+      <td>${(s.snap||0).toLocaleString()}</td>
+      <td>${lines?(sm.matched??0):'—'}</td><td>${lines?(sm.variances??0):'—'}</td><td>${lines?(sm.unexpected??0):'—'}</td><td>${lines?(sm.uncounted??0):'—'}</td>
+      <td>${lines?acc.toFixed(1)+'%':'—'}</td>
+      <td class="small">${created.toLocaleString(LOC())}</td><td style="white-space:nowrap">${acts}</td></tr>`);
+  }
+  if(!shown)tb.innerHTML=`<tr><td colspan="14" class="small">${t('tower.noMatch')}</td></tr>`;
+  document.getElementById('tower-note').textContent=t('tower.shown',{n:shown,total:TOWER.length});
+}
+async function closeCount(id){
+  const ok=await confirmYesNo(t('confirm.close'));
+  if(!ok)return;
+  const {error}=await sb.from('count_sessions').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',id);
+  if(error){flash('bad',t('err.close',{msg:error.message}));return;}
+  flash('ok',t('msg.closed'));loadTower();
+}
+async function deleteCount(id,label){
+  const ok=await confirmYesNo(t('confirm.delete',{label}));
+  if(!ok)return;
+  const {error}=await sb.from('count_sessions').delete().eq('id',id);
+  if(error){flash('bad',t('err.delete',{msg:error.message}));return;}
+  if(session&&session.id===id){session=null;rememberSession();updateBadges();}
+  flash('ok',t('msg.deleted',{label}));loadTower();
+}
+async function nextCountNum(){
+  const {data}=await sb.from('count_sessions').select('count_id');
+  let mx=0;(data||[]).forEach(r=>{const m=/^C(\d+)/.exec(r.count_id||'');if(m)mx=Math.max(mx,+m[1]);});
+  NEXTNUM='C'+String(mx+1).padStart(4,'0');return NEXTNUM;
+}
+async function loadSessions(){
+  const {data,error}=await sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').order('created_at',{ascending:false});
+  if(error){flash('bad','Load sessions: '+error.message);return;}
+  const tb=document.querySelector('#sessions-tbl tbody');tb.innerHTML='';
+  for(const s of (data||[])){
+    const {count}=await sb.from('wms_snapshot_rows').select('*',{count:'exact',head:true}).eq('session_id',s.id);
+    // Status is stored/explicit and button-driven.
+    const st=s.status;
+    let disp,cls;
+    if(st==='verified'){disp='Verified';cls='verified';}
+    else if(st==='under_review'){disp='Under Review';cls='review';}
+    else{disp='Counting';cls='counting';}
+    const isVerified=st==='verified';
+    const canReview=!isVerified && st!=='under_review';   // only from Counting
+    const canComplete=st==='under_review';                // Complete only when Under Review
+    const actions=
+      `<button class="btn ok sm" onclick="resumeSession('${s.id}')">${isVerified?'View':'Resume'}</button>`+
+      ` <button class="btn sm" style="background:var(--brand)" onclick="setUnderReview('${s.id}')" ${canReview?'':'disabled'}>Under Review</button>`+
+      ` <button class="btn sm" style="background:var(--ok)" onclick="completeCount('${s.id}')" ${canComplete?'':'disabled'}>Complete</button>`+
+      (isVerified?` <span class="pill verified">🔒 Locked</span>`:'');
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td class="mono">${s.count_id}</td><td>${s.customer?.name||''}</td><td>${s.warehouse?.name||''}</td>
+      <td>${s.scope_type}</td><td><span class="pill ${cls}">${disp}</span></td>
+      <td>${(count||0).toLocaleString()}</td><td class="small">${new Date(s.created_at).toLocaleString()}</td>
+      <td>${actions}</td></tr>`);
+  }
+  if(!data||!data.length) tb.innerHTML='<tr><td colspan="8" class="small">No counts yet — create one above.</td></tr>';
+}
+async function resumeSession(id){
+  const {data,error}=await sb.from('count_sessions').select('*, customer:customers(*), warehouse:warehouses(*)').eq('id',id).single();
+  if(error){flash('bad',error.message);return;}
+  if(data.status==='verified'){
+    // hard-locked: view only
+    session=data;rememberSession();subscribeScans();updateBadges();flash('warn',t('msg.lockedView',{id:data.count_id}));setView('dash');return;
+  }
+  if(data.status==='under_review'){
+    // soft-locked: Resume reopens for counting
+    await sb.from('count_sessions').update({status:'counting'}).eq('id',id);
+    data.status='counting';flash('ok',t('msg.reopened',{id:data.count_id}));
+  }else{
+    flash('ok',t('msg.active',{id:data.count_id,cust:data.customer.name}));
+  }
+  session=data;rememberSession();subscribeScans();updateBadges();setView('scan');
+}
+async function setUnderReview(id){
+  const {error}=await sb.from('count_sessions').update({status:'under_review'}).eq('id',id);
+  if(error){flash('bad',t('err.update',{msg:error.message}));return;}
+  flash('ok',t('msg.underReview'));
+  loadTower();
+}
+/* ---------- Yes/No modal + complete/verify ---------- */
+function confirmYesNo(msg){
+  return new Promise(res=>{
+    const ov=document.getElementById('modal-ov');
+    document.getElementById('modal-msg').textContent=msg;
+    ov.classList.remove('hidden');
+    const yes=document.getElementById('modal-yes'),no=document.getElementById('modal-no');
+    const done=v=>{ov.classList.add('hidden');yes.onclick=null;no.onclick=null;res(v);};
+    yes.onclick=()=>done(true);no.onclick=()=>done(false);
+  });
+}
+async function completeCount(id){
+  const ok=await confirmYesNo(t('confirm.complete'));
+  if(!ok)return;
+  const {error}=await sb.from('count_sessions').update({status:'verified',closed_at:new Date().toISOString()}).eq('id',id);
+  if(error){flash('bad',t('err.completeCount',{msg:error.message}));return;}
+  flash('ok',t('msg.verified'));
+  loadTower();
+}
+function scopeHint(){
+  const sv=document.getElementById('nc-scope').value;
+  const lbl=document.getElementById('nc-scopeval-l');
+  const inp=document.getElementById('nc-scopeval');
+  const k=['whole_customer','zones','areas','rows','locations','skus'].includes(sv)?sv:'whole_customer';   // label + placeholder per scope live in I18N (scopeHint.*)
+  lbl.textContent=t('scopeHint.'+k+'.l'); inp.placeholder=t('scopeHint.'+k+'.p');
+  inp.disabled=(sv==='whole_customer'); if(sv==='whole_customer')inp.value='';
+  // second scope: only meaningful on a scoped count, and it cannot repeat the first dimension
+  const row2=document.getElementById('nc-scope2-row'),s2=document.getElementById('nc-scope2');
+  row2.classList.toggle('hidden',sv==='whole_customer');
+  if(sv==='whole_customer'){s2.value='';}
+  [...s2.options].forEach(o=>{o.disabled=!!o.value&&o.value===sv;});
+  if(s2.value===sv)s2.value='';
+  scopeHint2();
+}
+function scopeHint2(){
+  const sv=document.getElementById('nc-scope2').value;
+  const lbl=document.getElementById('nc-scopeval2-l'),inp=document.getElementById('nc-scopeval2');
+  const k=['zones','areas','rows','locations','skus'].includes(sv)?sv:'';
+  lbl.textContent=k?t('scopeHint.'+k+'.l'):t('create.scopeval2.l'); inp.placeholder=k?t('scopeHint.'+k+'.p'):'';
+  inp.disabled=!k; if(!k)inp.value='';
+}
+function splitVals(id){return document.getElementById(id).value.split(',').map(s=>s.trim()).filter(Boolean);}
+let pulledOk=false;
+async function createCount(){
+  if(!counter()){setCounter();if(!counter()){flash('warn',t('msg.enterName'));return;}}
+  const csel=document.getElementById('nc-customer');const opt=csel.options[csel.selectedIndex];
+  const customer_id=csel.value, vendor_id=+opt.dataset.vendor;
+  const warehouse_id=+document.getElementById('nc-warehouse').value;
+  const scope_type=document.getElementById('nc-scope').value;
+  const scopeval=splitVals('nc-scopeval');
+  // second scope (optional): applied to the frozen snapshot right after the pull
+  const scope_type2=(scope_type==='whole_customer')?'':document.getElementById('nc-scope2').value;
+  const scopeval2=scope_type2?splitVals('nc-scopeval2'):[];
+  const count_type=ctKey(document.getElementById('nc-ctype').value);
+  if(scope_type!=='whole_customer'&&!scopeval.length){flash('warn',t('create.needScopeVals',{type:scopeLabel(scope_type)}));document.getElementById('nc-scopeval').focus();return;}
+  if(scope_type2&&!scopeval2.length){flash('warn',t('create.needScopeVals',{type:scopeLabel(scope_type2)}));document.getElementById('nc-scopeval2').focus();return;}
+  if(scope_type2&&scope_type2===scope_type){flash('warn',t('create.sameScope'));return;}
+  const btn=document.getElementById('nc-btn');btn.disabled=true;
+  try{
+    const num=await nextCountNum();const count_id=buildName(num);
+    const {data:ins,error}=await sb.from('count_sessions').insert({
+      count_id,customer_id,warehouse_id,scope_type,scope_values:scope_type==='whole_customer'?[]:scopeval,
+      scope_type2:scope_type2||null,scope_values2:scope_type2?scopeval2:null,count_type,
+      status:'open',counters:[counter()],created_by:counter()
+    }).select('*, customer:customers(*), warehouse:warehouses(*)').single();
+    if(error)throw error;
+    session=ins;rememberSession();updateBadges();
+    pulledOk=false;
+    // pull snapshot page by page
+    document.getElementById('nc-progress').classList.remove('hidden');
+    const bar=document.getElementById('nc-bar'),ptext=document.getElementById('nc-progtext');
+    // Refresh the product master (SKU -> UPC) first - server gates this to once
+    // per 24h, so it's a no-op most of the time. Non-fatal if it fails: the
+    // snapshot still pulls; UPCs just won't be freshly matched.
+    try{
+      let pp=1,pdone=false;
+      while(!pdone){
+        const pr=await fetch('/api/products-pull',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page:pp})});
+        const pj=await pr.json(); if(!pr.ok)throw new Error(pj.error||'products pull failed');
+        pdone=pj.done;
+        if(!pj.fresh){bar.style.width=Math.round(pp/(pj.lastPage||1)*100)+'%';ptext.textContent=t('create.refreshingProducts',{p:pp,n:pj.lastPage});}
+        pp++; if(pp>(pj.lastPage||1)+2)break;
+      }
+    }catch(e){ /* product refresh is best-effort */ }
+    let page=1,done=false,inserted=0,last=1;
+    while(!done){
+      const r=await fetch('/api/wms-pull',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({sessionId:session.id,vendorId:vendor_id,warehouseId:warehouse_id,page,take:2000,scopeType:scope_type,scopeValues:(scope_type==='whole_customer'?[]:scopeval)})});
+      const j=await r.json();
+      if(!r.ok){throw new Error(j.error||('pull failed p'+page));}
+      inserted+=j.inserted;last=j.lastPage;done=j.done;
+      bar.style.width=Math.round(page/last*100)+'%';
+      ptext.textContent=t('create.pulling',{page,last,n:inserted.toLocaleString(),cust:session.customer.name});
+      page++;
+      if(page>last+2)break;
+    }
+    // Second scope: trim the frozen snapshot server-side (apply_scope_filter deletes every
+    // row that does not match and records the scope on the count). The pull itself only
+    // knows one scope, so e.g. "Rows H, I" is pulled and "Zone P1Z" is applied here.
+    if(scope_type2){
+      ptext.textContent=t('create.applyingScope2',{type:scopeLabel(scope_type2),vals:scopeval2.join(', ')});
+      const {data:removed,error:e2}=await sb.rpc('apply_scope_filter',{p_session:session.id,p_type:scope_type2,p_values:scopeval2});
+      if(e2)throw new Error(t('create.scope2Failed',{msg:e2.message}));
+      inserted=Math.max(0,inserted-(+removed||0));
+      session.scope_type2=scope_type2;session.scope_values2=scopeval2;
+      if(!inserted)flash('warn',t('create.scope2Empty',{type:scopeLabel(scope_type2),vals:scopeval2.join(', ')}));
+    }
+    pulledOk=true;
+    ptext.textContent=t('create.snapReady',{n:inserted.toLocaleString(),id:session.count_id});
+    subscribeScans();flash('ok',t('create.created',{id:session.count_id,n:inserted.toLocaleString()}));
+    loadTower();nextCountNum().then(previewName);setTimeout(()=>setView('scan'),600);
+  }catch(e){
+    // Snapshot pull failed after the count_sessions row was inserted: remove the
+    // empty count so it does not linger in the Control Tower / count picker and
+    // burn a count number (2026-10-06, Tacoma 404s left C0031/C0033 at 0 rows).
+    if(session&&!pulledOk&&session.status==='open'){
+      const dead=session; session=null; localStorage.removeItem('pc_session_id');
+      try{ await sb.from('wms_snapshot_rows').delete().eq('session_id',dead.id);
+           await sb.from('count_sessions').delete().eq('id',dead.id).eq('status','open'); }catch(_){}
+      updateBadges(); loadTower(); nextCountNum().then(previewName);
+      document.getElementById('nc-progress').classList.add('hidden');
+    }
+    flash('bad',t('err.create',{msg:e.message}));
+  }
+  finally{btn.disabled=false;}
+}
+
+/* ---------- realtime scans ---------- */
+function subscribeScans(){
+  if(recChan) sb.removeChannel(recChan);
+  if(!session)return;
+  recChan=sb.channel('scans-'+session.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'scanned_records',filter:'session_id=eq.'+session.id},()=>{loadRecentScans();})
+    .subscribe();
+  // directive list is shared: any completion / claim / new counter on this count refreshes every handheld
+  if(dirChan) sb.removeChannel(dirChan);
+  dirChan=sb.channel('directive-'+session.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'location_status',filter:'session_id=eq.'+session.id},()=>debouncedDirective())
+    .on('postgres_changes',{event:'*',schema:'public',table:'location_claims',filter:'session_id=eq.'+session.id},()=>debouncedDirective())
+    .on('postgres_changes',{event:'*',schema:'public',table:'count_counters',filter:'session_id=eq.'+session.id},()=>debouncedDirective())
+    .subscribe();
+}
+function debouncedDirective(){clearTimeout(dirTimer);dirTimer=setTimeout(()=>{loadDirective();const dv=document.getElementById('view-dash');if(dv&&!dv.classList.contains('hidden'))refreshDash();},600);}
+/* ---------- directive: where to count next ---------- */
+async function loadDirective(manual){
+  const card=document.getElementById('directive'); if(!card)return;
+  if(!SCANNER||!session||!counter()||!ctype()||registeredFor!==session.id){card.classList.add('hidden');return;}
+  const {data,error}=await sb.rpc('next_directive',{p_session:session.id,p_name:counter(),p_type:ctype(),p_device:deviceId(),p_skip:skipList});
+  if(error){if(manual)flash('bad',t('err.directive',{msg:error.message}));return;}
+  directive=data; renderDirective();
+}
+function renderDirective(){
+  const card=document.getElementById('directive'),d=directive; if(!card||!d)return;
+  card.classList.remove('hidden');
+  const pct=d.total?Math.round(d.done/d.total*100):0;
+  document.getElementById('d-bar').style.width=pct+'%';
+  card.classList.toggle('recount',isRecounter());
+  if(isRecounter()){
+    // recount queue: oldest request first; the card explains who asked and why
+    document.getElementById('d-role').textContent=t('dir.recountRole',{seq:d.seq});
+    if(!d.location){
+      card.classList.add('alldone');
+      document.getElementById('d-loc').textContent=t('dir.recountAllDone');
+      document.getElementById('d-meta').textContent=d.in_progress?t('dir.othersCounting',{n:d.in_progress}).replace(/^ · /,''):t('dir.recountNone');
+      document.getElementById('d-queue').textContent='';
+    }else{
+      card.classList.remove('alldone');
+      document.getElementById('d-loc').textContent=d.location;
+      const when=d.requested_at?' · '+new Date(d.requested_at).toLocaleString(LOC(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+      document.getElementById('d-meta').textContent=t('dir.recountMeta',{n:d.recount_count||1,who:d.requested_by||t('lb.other'),when,why:d.reason?t('dir.recountWhy',{r:d.reason}):''})+(d.loc_type?t('dir.locType',{t:ctypeLow(d.loc_type)}):'')+' — '+t('dir.recountDoneOf',{done:d.done,total:d.total});
+      document.getElementById('d-queue').textContent=(d.queue&&d.queue.length)?(t('dir.then')+d.queue.map(q=>q.location).join(' → ')):'';
+    }
+    card.classList.toggle('mini',!!flow.location);return;
+  }
+  document.getElementById('d-role').textContent=t('dir.role',{type:ctypeShort(),seq:d.seq,dirn:t(d.direction==='asc'?'dir.asc':'dir.desc')});
+  if(!d.location){
+    card.classList.add('alldone');
+    document.getElementById('d-loc').textContent=t(d.total?'dir.allDone':'dir.none',{type:ctypeLow()});
+    document.getElementById('d-meta').textContent=d.total?(t('dir.doneOf',{done:d.done,total:d.total})+(d.in_progress?t('dir.othersCounting',{n:d.in_progress}):'')):t('dir.noMatch');
+    document.getElementById('d-queue').textContent='';
+  }else{
+    card.classList.remove('alldone');
+    document.getElementById('d-loc').textContent=d.location;
+    document.getElementById('d-meta').textContent=t('dir.priority',{p:d.priority_id})+(d.area?' · '+d.area+(d.zone?' '+d.zone:'')+(d.level?t('dir.level',{l:d.level}):''):'')+' — '+t('dir.doneOf',{done:d.done,total:d.total})+' ('+pct+'%)'+(d.in_progress?t('dir.inProgress',{n:d.in_progress}):'')+(d.counters>1?t('dir.counters',{n:d.counters}):'');
+    document.getElementById('d-queue').textContent=(d.queue&&d.queue.length)?(t('dir.then')+d.queue.map(q=>q.location).join(' → ')):'';
+  }
+  // while a location is being counted the card shrinks to one line so the step cards stay on top
+  card.classList.toggle('mini',!!flow.location);
+}
+function skipDirective(){ if(!directive||!directive.location)return; skipList.push(directive.location); flash('warn',t('msg.skipped',{loc:directive.location})); loadDirective(true); }
+async function loadRecentScans(){
+  if(!session)return;
+  const {data}=await sb.from('scanned_records').select('*').eq('session_id',session.id).order('created_at',{ascending:false}).limit(50);
+  const tb=document.querySelector('#rec-tbl tbody');tb.innerHTML='';
+  (data||[]).forEach(r=>tb.insertAdjacentHTML('beforeend',
+    `<tr><td class="mono">${r.location}</td><td class="mono">${r.pallet_tag||'—'}</td><td class="mono">${r.case_number||'—'}</td><td class="mono">${r.sku}</td><td>${r.quantity}</td><td class="small">${r.counter||''}</td><td><span class="del" onclick="delScan(${r.id})">✕</span></td></tr>`));
+  const {count}=await sb.from('scanned_records').select('*',{count:'exact',head:true}).eq('session_id',session.id);
+  document.getElementById('rec-count').textContent=(count||0);
+  const last=(data||[])[0],rl=document.getElementById('rec-last');
+  if(rl)rl.innerHTML=last?t('rec.last',{ref:last.case_number||last.pallet_tag||last.location,sku:last.sku||'—',qty:last.quantity}):t('rec.none');
+}
+async function delScan(id){await sb.from('scanned_records').delete().eq('id',id);loadRecentScans();}
+async function addScan(location,pallet,caseNo,sku,qty,src){
+  const {error}=await sb.from('scanned_records').insert({session_id:session.id,location,pallet_tag:pallet||'',case_number:caseNo||'',sku:String(sku||''),quantity:+qty||0,src,counter:counter(),device_id:deviceId()});
+  if(error)flash('bad',t('err.save',{msg:error.message}));
+}
+
+/* ---------- snapshot lookups (on demand) ---------- */
+async function snapByPallet(tag){const {data}=await sb.from('wms_snapshot_rows').select('case_number,sku,quantity').eq('session_id',session.id).eq('pallet_tag',tag);return data||[];}
+async function snapByCase(cn){const {data}=await sb.from('wms_snapshot_rows').select('sku,quantity,location').eq('session_id',session.id).eq('case_number',cn);return data||[];}
+async function snapLocation(loc){const {data}=await sb.from('wms_snapshot_rows').select('pallet_tag,case_number,sku,quantity').eq('session_id',session.id).eq('location',loc).limit(2000);return data||[];}
+
+/* ---------- flow ---------- */
+function showMulti(ids){STEPS.forEach(s=>document.getElementById(s).classList.toggle('hidden',!ids.includes(s)));
+  // When the pallet question is being skipped for this location, the Case card is the
+  // location's "home" card, so it carries the Location Count Complete control.
+  const f=document.getElementById('case-avail-finish');if(f)f.classList.toggle('hidden',!(flow.noPallet&&ids.includes('s-case-avail')));}
+function crumbs(){const c=document.getElementById('crumbs');const p=[];
+  if(flow.location)p.push(`<span class="crumb">${t('crumb.loc')} <b>${flow.location}</b></span>`);
+  if(flow.noPallet&&!flow.pallet)p.push(`<span class="crumb">${t('crumb.pallet')} <b>${t('crumb.none')}</b> · <a href="#" onclick="askPalletAgain();return false" style="color:var(--muted)">${t('crumb.change')}</a></span>`);
+  if(flow.pallet)p.push(`<span class="crumb">${t('crumb.pallet')} <b>${flow.pallet}</b>${flow.palletOpen===true?t('crumb.openM'):flow.palletOpen===false?t('crumb.closedM'):''}${flow.mixedSku?t('crumb.mixed'):''}</span>`);
+  if(flow.case)p.push(`<span class="crumb">${t('crumb.case')} <b>${flow.case}</b>${flow.caseOpen===true?t('crumb.openF'):flow.caseOpen===false?t('crumb.closedF'):''}</span>`);
+  if(flow.unx){const u=flow.unx;p.push(`<span class="crumb unx">${t('unx.crumb.'+u.kind)} <b>${u.val}</b>${u.pallet&&u.kind!=='pallet'?t('crumb.plt')+u.pallet:''}${u.case&&u.kind!=='case'?t('crumb.caseLow')+u.case:''}</span>`);}
+  c.innerHTML=p.join('');}
+function afterShow(id){document.getElementById(id).classList.remove('hidden');const el=document.querySelector('#'+id+' input.scan');if(el){el.value='';setTimeout(()=>el.focus(),30);}}
+function resetFlow(){flow={};eachBuf={};document.getElementById('crumbs').innerHTML='';document.getElementById('loc-info').classList.add('hidden');document.getElementById('loc-blocked').classList.add('hidden');document.getElementById('loc-recount-note').classList.add('hidden');showMulti(['s-location']);const el=document.getElementById('in-location');if(el){el.value='';el.focus();}renderDirective();}
+/* A location is counted once. Completed → hard stop (only the office can Recount from the
+   Dashboard). Being counted on another scanner → stop, with a Take-over for a dead handheld. */
+function showBlocked(loc,res){
+  flow={blockedLoc:loc};document.getElementById('crumbs').innerHTML='';document.getElementById('loc-info').classList.add('hidden');
+  STEPS.forEach(s=>document.getElementById(s).classList.add('hidden'));
+  const when=res.at?' · '+new Date(res.at).toLocaleString(LOC(), {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+  const who=res.counter||t('lb.other');
+  const g=id=>document.getElementById(id);
+  g('lb-loc').textContent=loc;
+  if(res.reason==='complete'){
+    g('lb-title').textContent=t('lb.doneTitle');
+    g('lb-who').textContent=t('lb.doneBy',{who,when});
+    g('lb-hint').textContent=t('lb.doneHint');
+    g('lb-takeover').classList.add('hidden'); g('lb-recount').classList.toggle('hidden',SCANNER);
+  }else if(res.reason==='recount_queue'){
+    // a Floor/Lift counter scanned a location the office sent back for recount
+    g('lb-title').textContent=t('lb.rqTitle');
+    g('lb-who').textContent=t('lb.rqBy',{n:res.recount_count||1,who,when});
+    g('lb-hint').textContent=t('lb.rqHint')+(res.reason_text?' — “'+res.reason_text+'”':'');
+    g('lb-takeover').classList.add('hidden'); g('lb-recount').classList.add('hidden');
+  }else if(res.reason==='not_in_queue'){
+    // a Recount counter scanned a location that is not in the queue
+    g('lb-title').textContent=t('lb.nqTitle');
+    g('lb-who').textContent='';
+    g('lb-hint').textContent=t('lb.nqHint');
+    g('lb-takeover').classList.add('hidden'); g('lb-recount').classList.add('hidden');
+  }else{
+    g('lb-title').textContent=t('lb.busyTitle');
+    g('lb-who').textContent=t('lb.busyBy',{who,when});
+    g('lb-hint').textContent=t('lb.busyHint');
+    g('lb-takeover').classList.remove('hidden'); g('lb-recount').classList.add('hidden');
+  }
+  g('loc-blocked').classList.remove('hidden'); g('in-location').value='';
+}
+async function takeOverLocation(){const loc=flow.blockedLoc;if(!loc)return;const ok=await confirmYesNo(t('confirm.takeover',{loc}));if(!ok)return;await onLocation(loc,true);}
+/* Restart Location: wipes what THIS location has so far (scans + claim) and starts it over.
+   Refused once the location is Count Complete — that is an admin Recount. */
+async function restartLocation(){
+  const loc=flow.location;
+  if(!loc){resetFlow();return;}
+  const ok=await confirmYesNo(t('confirm.restart',{loc,id:session.count_id}));
+  if(!ok)return;
+  const {data,error}=await sb.rpc('restart_location',{p_session:session.id,p_location:loc,p_device:deviceId()});
+  if(error){flash('bad',t('err.restart',{msg:error.message}));return;}
+  if(!data.ok){resetFlow();showBlocked(loc,data);return;}
+  resetFlow();flash('warn',t('msg.restarted',{loc,n:data.deleted||0}));loadRecentScans();
+}
+function cancelStep(){if(flow.opReturn&&flow.pallet){const cs=flow.case;flow.case='';flow.caseOpen=undefined;flow.opReturn=false;eachBuf={};crumbs();showMulti(['s-pallet-cases']);updateOpenPalletProgress();afterShow('s-pallet-cases');flash('warn',t('msg.caseCancelled',{cs,p:flow.pallet}));return;}resetFlow();flash('warn',t('msg.cancelled'))}
+function norm(s){return (s||'').trim().toUpperCase()}
+function kv(k,v){return `<div class="kv"><span>${k}</span><span>${v}</span></div>`}
+
+async function onLocation(val,force){val=norm(val);if(!val)return;
+  // claim it first: refused if already Count Complete, or in progress on another scanner
+  if(session){
+    const {data:cl,error:ce}=await sb.rpc('claim_location',{p_session:session.id,p_location:val,p_name:counter()||null,p_device:deviceId(),p_force:!!force});
+    if(ce){flash('bad',t('err.claim',{msg:ce.message}));return;}
+    if(!cl.ok){showBlocked(val,cl);return;}
+    if(SCANNER&&ctype()&&!isRecounter()&&cl.counter_type&&cl.counter_type!==ctype())flash('warn',t('msg.wrongType',{loc:val,t1:ctypeLow(cl.counter_type),t2:ctypeLow()}));
+    else if(SCANNER&&directive&&directive.location&&directive.location!==val)flash('warn',t('msg.notDirected',{d:directive.location,loc:val}));
+    // recount pass: say so on the screen (the earlier count is kept on file as the previous pass)
+    const rn=document.getElementById('loc-recount-note');
+    if(cl.recount){const when=cl.requested_at?' · '+new Date(cl.requested_at).toLocaleString(LOC(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+      rn.innerHTML=t('note.recount',{n:cl.recount_count||1,who:cl.requested_by||t('lb.other'),when,why:cl.reason_text?t('dir.recountWhy',{r:cl.reason_text}):''});rn.classList.remove('hidden');}
+    else rn.classList.add('hidden');
+  }
+  flow={location:val};crumbs();document.getElementById('loc-blocked').classList.add('hidden');renderDirective();
+  const rows=await snapLocation(val);flow.snap=rows;const info=document.getElementById('loc-info');info.classList.remove('snap');
+  if(rows.length){const cases=new Set(rows.filter(r=>r.case_number).map(r=>r.case_number));const pallets=new Set(rows.filter(r=>r.pallet_tag).map(r=>r.pallet_tag));const qty=rows.reduce((a,r)=>a+ (+r.quantity||0),0);
+    info.classList.add('snap'); // admin-only: scanner mode hides expected counts (blind count)
+    info.innerHTML='<div class="step-title">'+t('snap.title')+'</div>'+kv(t('snap.pallets'),[...pallets].join(', ')||'—')+kv(t('snap.cases'),cases.size)+kv(t('snap.skus'),new Set(rows.map(r=>r.sku)).size)+kv(t('snap.qty'),qty);
+  }else if(session&&session.scope_type&&session.scope_type!=='whole_customer'){
+    // Scoped count: a location with no snapshot rows is almost certainly OUTSIDE the scope,
+    // not a mislocation. Everything scanned here will reconcile as "unexpected" and closed
+    // cases will have no WMS quantity — say so loudly before the counter starts.
+    const sv=(session.scope_values||[]).join(', ')+(session.scope_type2?' + '+scopeLabel(session.scope_type2)+': '+(session.scope_values2||[]).join(', '):'');
+    info.innerHTML=`<div class="flash bad" style="margin:0">${t('snap.outOfScope',{loc:val,id:session.count_id,type:scopeLabel(session.scope_type),sv:sv||'—'})}</div>`;
+  }else info.innerHTML='<div class="flash warn" style="margin:0">'+t('snap.notIn')+'</div>';
+  info.classList.remove('hidden');showMulti(['s-pallet-avail']);}
+// Pallet Tag available = "No" is remembered for the rest of this location:
+// every later item at the location skips straight to the Case question.
+// The flag is cleared when the location is reset (new location, cancel,
+// Location Count Complete, or Recount) or via the crumb's "change" link.
+function answerPalletAvail(yes){if(yes){flow.noPallet=false;showMulti(['s-pallet-scan']);afterShow('s-pallet-scan');}else{flow.noPallet=true;showMulti(['s-case-avail']);}crumbs();}
+function askPalletAgain(){flow.noPallet=false;crumbs();showMulti(['s-pallet-avail']);}
+async function onPallet(val){val=norm(val);if(!val)return;flow.pallet=val;flow.mixedSku=false;crumbs();
+  // Unexpected pallet: the tag is not in WMS at THIS location (unknown, or mislocated from elsewhere)
+  if(!palletAtLoc(val))return raiseUnexpected('pallet',val,{});
+  const rows=await snapByPallet(val);
+  {const skus=new Set(rows.map(r=>r.sku));if(skus.size>1){flow.mixedSku=true;flash('warn',t('msg.mixedPallet',{n:skus.size,val}));return answerPalletOpen(true);}}
+  showMulti(['s-pallet-open']);}
+async function answerPalletOpen(open){flow.palletOpen=open;crumbs();
+  if(open){flow.palletCasesSeen=new Set();showMulti(['s-pallet-cases']);updateOpenPalletProgress();afterShow('s-pallet-cases');}
+  else{const rows=await snapByPallet(flow.pallet);const skus=[...new Set(rows.map(r=>r.sku))];
+    document.getElementById('pallet-preview').innerHTML=rows.length?(SCANNER?t('prev.wmsSku',{skus:skus.join(', ')}):t('prev.palletFull',{n:rows.length,skus:skus.join(', ')})):t('prev.palletNone');
+    showMulti(['s-pallet-sku']);afterShow('s-pallet-sku');}}
+async function commitClosedPallet(){let sku=norm(document.getElementById('in-pallet-sku').value);if(!sku){flash('bad',t('msg.scanSkuFirst'));return;}sku=await resolveToSku(sku);
+  const rows=(await snapByPallet(flow.pallet)).filter(r=>String(r.sku)===sku);
+  if(rows.length){for(const r of rows)await addScan(flow.location,flow.pallet,r.case_number,r.sku,r.quantity,'wms-pallet');flash('ok',t('msg.palletRecorded',{n:rows.length,p:flow.pallet,sku}));}
+  else return raiseUnexpected('sku',sku,{pallet:flow.pallet}); // SKU on the pallet is not what WMS has on it → count every unit
+  nextItem();}
+// Open pallet: each case scans, then the counter says whether THAT case is open.
+// Closed -> record the WMS rows for the case (src wms-case), exactly as before.
+// Open   -> each-count the units inside; the pallet and case are carried on every line,
+//           then control returns to the open-pallet case list and the progress counter.
+async function onOpenPalletCase(val){val=norm(val);if(!val)return;
+  if(!caseAtLoc(val))return raiseUnexpected('case',val,{pallet:flow.pallet,returnTo:'open-pallet'});
+  flow.case=val;flow.caseOpen=undefined;crumbs();
+  const rows=await snapByCase(val);const skus=[...new Set(rows.map(r=>r.sku))];
+  document.getElementById('opc-hint').innerHTML=t('opc.case',{val,p:flow.pallet})+(rows.length?t('opc.wmsSku',{skus:skus.join(', ')})+(SCANNER?'':' × '+rows.reduce((a,r)=>a+(+r.quantity||0),0)):'')+'.<br>'+t('opc.hint');
+  showMulti(['s-opc-open']);
+  const b=document.querySelector('#s-opc-open button');if(b)setTimeout(()=>b.focus(),30);}
+async function answerOpenPalletCaseOpen(open){const cs=flow.case;flow.caseOpen=open;crumbs();
+  if(open){flow.opReturn=true;startEaches(t('each.openCaseOnPallet',{cs}),t('each.subCase'),t('each.btnCase'));return;}
+  const rows=await snapByCase(cs);
+  if(rows.length){for(const r of rows)await addScan(flow.location,flow.pallet,cs,r.sku,r.quantity,'wms-case');flash('ok',SCANNER?t('msg.caseRecorded',{cs}):t('msg.caseRecordedUnits',{cs,n:rows.reduce((a,r)=>a+(+r.quantity||0),0)}));}
+  returnToOpenPallet(cs);}
+function returnToOpenPallet(cs){flow.case='';flow.caseOpen=undefined;flow.opReturn=false;eachBuf={};
+  if(cs)flow.palletCasesSeen.add(cs);crumbs();showMulti(['s-pallet-cases']);updateOpenPalletProgress();afterShow('s-pallet-cases');}
+async function updateOpenPalletProgress(){const rows=await snapByPallet(flow.pallet);const exp=new Set(rows.map(r=>r.case_number).filter(Boolean));document.getElementById('open-pallet-progress').textContent=t('op.progress',{n:flow.palletCasesSeen.size,exp:(exp.size&&!SCANNER)?t('op.ofExpected',{n:exp.size}):''});}
+function answerCaseAvail(yes){if(yes){flow.noCase=false;showMulti(['s-case-scan']);afterShow('s-case-scan');}else{flow.noCase=true;startEaches(t('each.eachOnly',{loc:flow.location}),t('each.subEachOnly'),t('each.btnDefault'));}}
+async function onCase(val){val=norm(val);if(!val)return;flow.case=val;crumbs();
+  if(!caseAtLoc(val))return raiseUnexpected('case',val,{pallet:flow.pallet});
+  showMulti(['s-case-open']);}
+async function answerCaseOpen(open){flow.caseOpen=open;crumbs();
+  if(open)startEaches(t('each.openCase',{cs:flow.case}),t('each.subCase'),t('each.btnCase'));
+  else{const rows=await snapByCase(flow.case);const skus=[...new Set(rows.map(r=>r.sku))];
+    document.getElementById('case-preview').innerHTML=SCANNER?t('prev.wmsSku',{skus:skus.join(', ')}):t('prev.caseFull',{skus:skus.join(', '),qty:rows.reduce((a,r)=>a+(+r.quantity||0),0)});
+    showMulti(['s-case-sku']);afterShow('s-case-sku');}}
+async function commitClosedCase(){let sku=norm(document.getElementById('in-case-sku').value);if(!sku){flash('bad',t('msg.scanSkuFirst'));return;}sku=await resolveToSku(sku);
+  const rows=(await snapByCase(flow.case)).filter(r=>String(r.sku)===sku);
+  if(rows.length){for(const r of rows)await addScan(flow.location,'',flow.case,r.sku,r.quantity,'wms-case');flash('ok',SCANNER?t('msg.caseRecordedSku',{cs:flow.case,sku}):t('msg.caseRecordedSkuQty',{cs:flow.case,sku,qty:rows.reduce((a,r)=>a+(+r.quantity||0),0)}));}
+  else return raiseUnexpected('sku',sku,{case:flow.case,pallet:flow.pallet}); // SKU in the case is not what WMS has in it → count every unit
+  nextItem();}
+function startEaches(title,sub,btn){eachBuf={};flow.lastEachSku=null;flow.ecEntered=new Set();document.getElementById('in-each').placeholder=flow.unx?t('each.phUnx'):t('each.ph');document.getElementById('s-eaches').classList.toggle('unx',!!flow.unx);document.getElementById('eaches-title').textContent=title;document.getElementById('eaches-sub').innerHTML=sub+(eachOnlyMode()?t('each.tailEnter'):t('each.tail'));updateEnterCount();document.getElementById('btn-eaches-done').textContent=btn||t('each.btnDefault');renderEach();showMulti(['s-eaches']);afterShow('s-eaches');}
+// Resolve a scanned code to a SKU: if it is already a snapshot SKU keep it;
+// otherwise translate a UPC -> SKU via the product master (products table).
+async function resolveToSku(code){
+  code=norm(code); if(!code)return code;
+  const {data:sHit}=await sb.from('wms_snapshot_rows').select('sku').eq('session_id',session.id).eq('sku',code).limit(1);
+  if(sHit&&sHit.length)return code;
+  const vId=session&&session.customer?session.customer.vendor_id:null;
+  let pq=sb.from('products').select('sku').eq('upc',code);
+  if(vId!=null)pq=pq.eq('vendor_id',vId);           // same UPC/SKU is reused across customers
+  const {data:pHit}=await pq.limit(1);
+  if(pHit&&pHit.length&&pHit[0].sku)return pHit[0].sku;
+  return code;
+}
+async function onEach(val){val=norm(val);if(!val)return;let code=val,qty=1;const m=val.match(/^(.+?)[*x](\d+)$/i);
+  // Free-text quantities are NOT accepted via the scan field. The only free-text quantity in the app is
+  // ⌨ Enter Count at each-only locations (Pallet Tag = No, Case = No), after a verification scan of the SKU/UPC.
+  if(m){flash('bad',t('msg.qtyOnlyEachOnly'));const el=document.getElementById('in-each');el.value='';el.focus();return;}
+  const sku=await resolveToSku(code); if(sku!==code)flash('ok',t('msg.upcToSku',{code,sku}));
+  // Normal each count: a SKU that WMS does not have at this location is UNEXPECTED. The counter
+  // must acknowledge it; the unit then counts (location/pallet/case are already known here) and
+  // its line is recorded as unexpected. Inside the unexpected-stock flow everything is unexpected.
+  if(!flow.unx&&!skuAtLoc(sku)&&!(flow.unxSkus&&flow.unxSkus.has(sku))){
+    flow.unxSkus=flow.unxSkus||new Set();flow.unxSkus.add(sku);
+    const locs=await whereInWms('sku',sku);
+    await okModal(t('unx.sku.modal',{sku,loc:flow.location,c:flow.case?t('unx.sku.inCase',{c:flow.case}):'',where:locs.length?t('unx.sku.at',{list:locs.slice(0,3).join(', '),more:locs.length>3?t('more',{n:locs.length-3}):''}):t('unx.sku.none')}));
+  }
+  eachBuf[sku]=(eachBuf[sku]||0)+qty;if(flow.ecEntered)flow.ecEntered.delete(sku);flow.lastEachSku=sku;renderEach();updateEnterCount();const el=document.getElementById('in-each');el.value='';el.focus();}
+/* ---------- Enter Count (each-only locations only) ---------- */
+function eachOnlyMode(){return !!flow.noPallet&&!!flow.noCase&&!flow.unx&&!flow.opReturn&&!flow.pallet&&!flow.case;}
+function updateEnterCount(){const w=document.getElementById('each-enter-wrap');const on=eachOnlyMode();w.classList.toggle('hidden',!on);if(!on)return;const sku=flow.lastEachSku;document.getElementById('btn-enter-count').disabled=!sku;document.getElementById('each-enter-hint').textContent=sku?t('each.enterHintSku',{sku}):t('each.enterHintScan');}
+function openEnterCount(){if(!eachOnlyMode()||!flow.lastEachSku)return;const sku=flow.lastEachSku;const m=document.getElementById('ec-msg');m.textContent=t('each.enterMsg',{sku,loc:flow.location});m.style.whiteSpace='pre-line';const i=document.getElementById('ec-qty');i.value=eachBuf[sku]!=null?String(eachBuf[sku]):'';document.getElementById('ec-ov').classList.remove('hidden');setTimeout(()=>{i.focus();i.select();},30);}
+function closeEnterCount(){document.getElementById('ec-ov').classList.add('hidden');const el=document.getElementById('in-each');el.value='';el.focus();}
+const ENTER_COUNT_VARIANCE=5; // units; |entered − WMS expected| greater than this requires the bypass confirmation
+async function submitEnterCount(){const sku=flow.lastEachSku;if(!sku)return closeEnterCount();const i=document.getElementById('ec-qty');const v=(i.value||'').replace(/\D/g,'');if(!v){flash('bad',t('each.enterNeedNum'));i.focus();return;}const n=parseInt(v,10);
+  // expected = WMS snapshot units of this SKU at this location (0 for an unexpected SKU). The expected figure is never shown (blind count).
+  const exp=locSnap().filter(r=>String(r.sku)===String(sku)).reduce((a,r)=>a+(+r.quantity||0),0);
+  if(Math.abs(n-exp)>ENTER_COUNT_VARIANCE){document.getElementById('ec-ov').classList.add('hidden');const mm=document.getElementById('modal-msg');mm.style.whiteSpace='pre-line';const ok=await confirmYesNo(t('each.enterVariance',{n}));mm.style.whiteSpace='';if(!ok){document.getElementById('ec-ov').classList.remove('hidden');setTimeout(()=>{i.focus();i.select();},30);return;}}
+  flow.ecEntered=flow.ecEntered||new Set();
+  if(n===0){delete eachBuf[sku];flow.ecEntered.delete(sku);flow.lastEachSku=null;flash('warn',t('each.enterRemoved',{sku}));}
+  else{eachBuf[sku]=n;flow.ecEntered.add(sku);flash('ok',t('each.enterSet',{sku,n}));}
+  renderEach();updateEnterCount();closeEnterCount();}
+function renderEach(){const tb=document.querySelector('#each-tbl tbody');tb.innerHTML='';let tot=0;Object.entries(eachBuf).forEach(([s,q])=>{tot+=q;const ux=!!flow.unx||(flow.unxSkus&&flow.unxSkus.has(s));const en=flow.ecEntered&&flow.ecEntered.has(s);tb.insertAdjacentHTML('beforeend',`<tr${ux?' class="unx"':''}><td class="mono">${s}${ux?' <span class="pill unexpected">'+t('pill.unexpected')+'</span>':''}${en?' <span class="pill entered">'+t('pill.entered')+'</span>':''}</td><td>${q}</td><td><span class="del" onclick="delEach('${s.replace(/'/g,'')}')">✕</span></td></tr>`);});document.getElementById('eaches-count').textContent=tot;}
+function delEach(s){delete eachBuf[s];if(flow.ecEntered)flow.ecEntered.delete(s);if(flow.lastEachSku===s)flow.lastEachSku=null;renderEach();updateEnterCount();}
+async function commitEaches(){const e=Object.entries(eachBuf);
+  if(flow.unx)return commitUnexpected();
+  if(!e.length){ if(flow.opReturn){flash('warn',t('msg.noUnitsOpenCase',{cs:flow.case,p:flow.pallet}));return returnToOpenPallet(flow.case);} return nextItem(); }
+  let ux=0;for(const [sku,q] of e){const isU=flow.unxSkus&&flow.unxSkus.has(sku);if(isU)ux++;await addScan(flow.location,flow.pallet||'',flow.case||'',sku,q,isU?'unexpected':(flow.ecEntered&&flow.ecEntered.has(sku)?'entered-each':'scan-each'));}
+  flash(ux?'warn':'ok',t('each.recorded',{n:e.length,ux:ux?t('each.unx',{n:ux}):'',ret:flow.opReturn?t('each.onPallet',{cs:flow.case,p:flow.pallet}):''}));
+  if(flow.opReturn)return returnToOpenPallet(flow.case);
+  nextItem();}
+// Mark a location Count Complete (idempotent). Uncounted WMS lines at a
+// completed location become confirmed shortages (variance) in reconciliation.
+async function markLocationComplete(location){
+  if(!session||!location)return false;
+  // server-side: upsert location_status + release the claim, so the location drops off every directive list at once
+  const {error}=await sb.rpc('complete_location',{p_session:session.id,p_location:location,p_name:counter()||null,p_device:deviceId()});
+  if(error){flash('bad',t('err.complete',{msg:error.message}));return false;}
+  return true;
+}
+function nextItem(){const loc=flow.location,noPallet=!!flow.noPallet,snap=flow.snap;flow={location:loc,noPallet,snap};eachBuf={};crumbs();showMulti([noPallet?'s-case-avail':'s-pallet-avail']);}
+async function finishLocation(){const loc=flow.location;if(!loc)return;const ok=await markLocationComplete(loc);if(!ok)return;resetFlow();
+  flash('ok',t('msg.locComplete',{loc})+(SCANNER?t('msg.followNext'):t('msg.scanNext')));
+  loadDirective();if(!document.getElementById('view-dash').classList.contains('hidden'))refreshDash();}
+
+
+/* ---------- unexpected stock ----------
+   "Unexpected" = a Pallet Tag, Case LPN or SKU that WMS does not have at THIS location
+   (either unknown to the snapshot, or mislocated from another location). The counter gets a
+   blocking error and must tap OK. The location is carried forward; the app then asks for the
+   Pallet Tag (if applicable), Case LPN (if applicable) and SKU, and the counter scans every
+   unit present — one scan per unit. Lines are saved with src='unexpected'. */
+function locSnap(){return flow.snap||[];}
+function palletAtLoc(tag){return locSnap().some(r=>(r.pallet_tag||'')===tag);}
+function caseAtLoc(cn){return locSnap().some(r=>(r.case_number||'')===cn);}
+function skuAtLoc(sku){return locSnap().some(r=>String(r.sku)===String(sku));}
+async function whereInWms(field,val){const {data}=await sb.from('wms_snapshot_rows').select('location').eq('session_id',session.id).eq(field,val).limit(200);return [...new Set((data||[]).map(r=>r.location))].sort();}
+function okModal(msg){return new Promise(res=>{const ov=document.getElementById('modal-ov');ov.classList.add('ok-only');document.getElementById('modal-msg').textContent=msg;document.getElementById('modal-msg').style.whiteSpace='pre-line';ov.classList.remove('hidden');const yes=document.getElementById('modal-yes');const prev=yes.textContent;yes.textContent='OK';yes.onclick=()=>{ov.classList.add('hidden');ov.classList.remove('ok-only');yes.textContent=prev;yes.onclick=null;document.getElementById('modal-msg').style.whiteSpace='';res(true);};yes.focus();});}
+function unxLabel(kind){return t('unx.label.'+kind);}
+async function raiseUnexpected(kind,val,ctx){
+  const g=id=>document.getElementById(id);
+  const field=kind==='pallet'?'pallet_tag':kind==='case'?'case_number':'sku';
+  const locs=await whereInWms(field,val);
+  const u={kind,val,pallet:ctx.pallet||'',case:ctx.case||'',sku:ctx.sku||'',returnTo:ctx.returnTo||'',noPallet:!!flow.noPallet&&!ctx.pallet,noCase:false,elsewhere:locs};
+  if(kind==='pallet')u.pallet=val; if(kind==='case')u.case=val; if(kind==='sku')u.sku=val;
+  if(kind==='sku'&&!u.case&&flow.noCase)u.noCase=true;
+  flow.unx=u;eachBuf={};crumbs();
+  g('u-ack-title').textContent=t('unx.title.'+kind);
+  g('u-ack-what').innerHTML=t('unx.what',{val,loc:flow.location});
+  g('u-ack-why').innerHTML=locs.length?t('unx.whyAt',{th:t('unx.this.'+kind),list:locs.slice(0,3).join(', '),more:locs.length>3?t('more',{n:locs.length-3}):''}):t('unx.whyNone',{th:t('unx.this.'+kind),id:session.count_id});
+  const steps=[];if(!u.pallet&&!u.noPallet)steps.push(unxLabel('pallet'));if(!u.case&&!u.noCase)steps.push(unxLabel('case'));if(!u.sku)steps.push(unxLabel('sku'));steps.push(t('unx.everyUnit'));
+  g('u-ack-next').innerHTML=t('unx.next',{loc:flow.location,steps:steps.join(' → ')});
+  showMulti(['u-ack']);
+  const b=document.querySelector('#u-ack button');if(b)setTimeout(()=>b.focus(),30);
+}
+function ackUnexpected(){unxNext();}
+function unxNext(){const u=flow.unx;if(!u)return resetFlow();
+  if(!u.pallet&&!u.noPallet){showMulti(['u-pallet']);afterShow('u-pallet');return;}
+  if(!u.case&&!u.noCase){document.getElementById('u-pallet-done').classList.toggle('hidden',!u.recorded);document.getElementById('u-case-hint').textContent=u.pallet?t('unx.onPallet',{p:u.pallet,rec:u.recorded?t('unx.recordedSoFar',{n:u.recorded}):''}):'';showMulti(['u-case']);afterShow('u-case');return;}
+  if(!u.sku){showMulti(['u-sku']);afterShow('u-sku');return;}
+  startEaches(t('unx.eachTitle',{sku:u.sku}),'',t('unx.eachBtn'));
+  document.getElementById('eaches-sub').innerHTML=t('unx.eachSub',{loc:flow.location,p:u.pallet?t('unx.subPallet',{p:u.pallet}):'',c:u.case?t('unx.subCase',{c:u.case}):''});
+  crumbs();}
+function onUnxPallet(v){v=norm(v);if(!v)return;flow.unx.pallet=v;flow.unx.noPallet=false;crumbs();unxNext();}
+function unxNoPallet(){flow.unx.noPallet=true;unxNext();}
+function onUnxCase(v){v=norm(v);if(!v)return;flow.unx.case=v;flow.unx.noCase=false;crumbs();unxNext();}
+function unxNoCase(){flow.unx.noCase=true;unxNext();}
+function unxPalletDone(){const u=flow.unx;flash('warn',t('msg.unxPalletDone',{p:u.pallet,n:u.recorded||0}));nextItem();}
+async function onUnxSku(v){v=norm(v);if(!v)return;const sku=await resolveToSku(v);if(sku!==v)flash('ok',t('msg.upcToSku',{code:v,sku}));flow.unx.sku=sku;crumbs();unxNext();}
+async function commitUnexpected(){const u=flow.unx;const e=Object.entries(eachBuf);
+  if(!e.length){flash('bad',t('msg.scanOneUnit'));document.getElementById('in-each').focus();return;}
+  for(const [sku,q] of e)await addScan(flow.location,u.pallet||'',u.case||'',sku,q,'unexpected');
+  const units=e.reduce((a,[,q])=>a+q,0);
+  flash('warn',t('msg.unxRecorded',{loc:flow.location,units,c:u.case?t('msg.unxCase',{c:u.case}):'',p:u.pallet?t('msg.unxPallet',{p:u.pallet}):''}));
+  eachBuf={};
+  if(u.returnTo==='open-pallet'){flow.unx=null;flow.palletCasesSeen.add(u.case);crumbs();showMulti(['s-pallet-cases']);updateOpenPalletProgress();afterShow('s-pallet-cases');return;}
+  if(u.pallet){u.recorded=(u.recorded||0)+1;u.case='';u.noCase=false;u.sku='';crumbs();unxNext();return;} // more cases on this pallet → Case LPN again, or Pallet done
+  nextItem();}
+
+/* ---------- dashboard ---------- */
+let dashTimer=null;function debouncedDash(){clearTimeout(dashTimer);dashTimer=setTimeout(loadReconDetail,350);}
+async function refreshDash(){await loadReconSummary();await loadReconDetail();}
+/* Scorecard — two rows, from v_dashboard_summary (server-side, one row per count).
+   Row 1: what has been counted.  Row 2: LOCATION-level results — a location is
+   Matched only when every line at it matches; any short/over line makes the whole
+   location a Variance; any pallet/case/SKU not in WMS at that location makes it
+   Unexpected (Unexpected wins when both are present, so the buckets never double
+   count). Row 2 is computed over COMPLETED locations only. */
+async function loadReconSummary(){
+  // count identity line: name · type chip · scope (both dimensions when a second filter was set)
+  const ctl=document.getElementById('dash-ct');
+  if(ctl)ctl.innerHTML=`<b class="mono" style="color:var(--txt)">${session.count_id}</b> ${ctChip(session.count_type)} · ${session.customer.name} · ${session.warehouse.name} · ${scopeText(session,true)}`;
+  const {data,error}=await sb.from('v_dashboard_summary').select('*').eq('session_id',session.id).maybeSingle();
+  if(error)flash('bad',t('err.dashSummary',{msg:error.message}));
+  const s=data||{};const n=k=>+s[k]||0;const f=k=>n(k).toLocaleString();
+  const pct=n('pct_locations_complete'),acc=n('location_accuracy_pct');
+  document.getElementById('dash-tiles').innerHTML=
+    tile('info',f('pallets_counted'),t('tile.pallets'))+tile('info',f('cartons_counted'),t('tile.cartons'))+tile('info',f('eaches_counted'),t('tile.eaches'))+
+    tile('info',f('total_locations'),t('tile.locsToCount'))+tile('info',f('completed_locations'),t('tile.locsCompleted'))+
+    tile(pct>=100?'ok':pct>=50?'warn':'info',pct.toFixed(1)+'%',t('tile.locsComplete'));
+  document.getElementById('dash-tiles-loc').innerHTML=
+    tile('ok',f('matched_locations'),t('tile.matched'))+tile('warn',f('variance_locations'),t('tile.variance'))+tile('bad',f('unexpected_locations'),t('tile.unexpected'))+
+    tile(acc>=98?'ok':acc>=90?'warn':'bad',acc.toFixed(1)+'%',t('tile.locAcc'),n('completed_locations')?t('tile.ofCompleted',{n:f('completed_locations')}):t('tile.noneCompleted'))+
+    tile(n('recount_locations')?'bad':'ok',f('recount_locations'),t('tile.toRecount'),t('tile.varUnx'))+
+    tile(n('recounts_requested')+n('recounts_in_progress')?'warn':'info',f('recounts_requested'),t('tile.recountsReq'),t('tile.recountsSub',{ip:f('recounts_in_progress'),done:f('recounts_done')}));
+  // directive progress per count type (who is counting, how far along)
+  const {data:dp}=await sb.from('v_directive_progress').select('*').eq('session_id',session.id);
+  let el=document.getElementById('dash-directive');
+  if(!el){el=document.createElement('div');el.id='dash-directive';el.className='small';el.style.margin='-4px 0 12px';document.querySelector('.tile-row.r2').insertAdjacentElement('afterend',el);}
+  el.innerHTML=(dp||[]).filter(r=>+r.total>0).map(r=>t('dash.progress',{type:ctypeName(r.counter_type),done:r.done,total:r.total,ip:+r.in_progress?t('dir.inProgress',{n:r.in_progress}):'',names:r.counters||t('dash.noneYet')})).join('<br>')||'';
+}
+async function loadReconDetail(){
+  const filt=document.getElementById('dash-filter').value;const q=document.getElementById('dash-search').value.trim().toUpperCase();
+  if(filt.startsWith('loc:'))return loadLocationDetail(filt.slice(4),q);
+  document.querySelector('#dash-tbl thead').innerHTML=t('dash.thead.lines');
+  let query=sb.from('v_reconciliation').select('*').eq('session_id',session.id);
+  if(filt!=='all')query=query.eq('status',filt);
+  if(q)query=query.or(`location.ilike.%${q}%,case_number.ilike.%${q}%,sku.ilike.%${q}%`);
+  const {data,error}=await query.order('delta',{ascending:true}).limit(500);
+  const tb=document.querySelector('#dash-tbl tbody');tb.innerHTML='';
+  if(error){document.getElementById('dash-note').textContent=t('error',{msg:error.message});return;}
+  (data||[]).forEach(r=>{const d=+r.delta;tb.insertAdjacentHTML('beforeend',
+    `<tr><td><span class="pill ${r.status}">${rsLabel(r.status==='recount'&&r.location_status==='recounting'?'recounting':r.status)}</span></td><td class="mono">${r.location}${+r.recount_count?` <span class="pill recount" title="pass ${r.pass}">🔁 ${r.recount_count}</span>`:''}</td><td class="mono">${r.pallet_tag||'—'}</td><td class="mono">${r.case_number||'—'}</td><td class="mono">${r.sku}</td><td>${r.product_name||''}${r.upc?`<div class="small mono">UPC ${r.upc}</div>`:''}</td><td>${r.wms_qty}</td><td>${r.counted_qty}</td><td style="font-weight:700;color:${d===0?'#4ade80':d>0?'#38bdf8':'#f87171'}">${d>0?'+':''}${d}</td><td>${recountBtn(r.location,r.location_status)}</td></tr>`);});
+  document.getElementById('dash-note').textContent=t('dash.linesShown',{n:(data||[]).length,cap:(data||[]).length>=500?t('dash.linesCap'):'',id:session.count_id});
+}
+/* Recount control per row: request (complete locations), cancel (queued, not yet started), or a
+   "Recounting…" marker once a Recount counter has engaged the location. */
+function recountBtn(loc,ls){const L=(loc||'').replace(/'/g,"\\'");
+  if(ls==='recount_requested')return `<button class="btn ghost sm" onclick="cancelRecount('${L}')">${t('act.cancelRecount')}</button>`;
+  if(ls==='recounting')return `<span class="pill recount">${t('act.recounting')}</span>`;
+  if(ls==='complete')return `<button class="btn ghost sm" onclick="recount('${L}')">${t('act.recount')}</button>`;
+  return '';}
+/* location-level list (v_location_recon): the recount worklist, the recount queue, or every location with its status */
+async function loadLocationDetail(mode,q){
+  document.querySelector('#dash-tbl thead').innerHTML=t('dash.thead.locs');
+  let query=sb.from('v_location_recon').select('*').eq('session_id',session.id);
+  if(mode==='recount')query=query.eq('complete',true).in('status',['variance','unexpected']);
+  if(mode==='queue')query=query.in('location_status',['recount_requested','recounting']);
+  if(q)query=query.ilike('location','%'+q+'%');
+  const {data,error}=await query.order('status').order('location').limit(500);
+  const tb=document.querySelector('#dash-tbl tbody');tb.innerHTML='';
+  if(error){document.getElementById('dash-note').textContent=t('error',{msg:error.message});return;}
+  (data||[]).forEach(r=>{const st=r.status==='recount'?(r.location_status==='recounting'?'recounting':'recount'):r.complete?r.status:'open';tb.insertAdjacentHTML('beforeend',
+    `<tr><td><span class="pill ${st==='open'?'counting':st==='recounting'?'recount':st}">${rsLabel(st)}</span></td><td class="mono">${r.location}</td><td>${+r.recount_count||0}${+r.recount_count?` <span class="small">(pass ${r.pass})</span>`:''}</td><td>${r.lines}</td><td>${r.matched_lines}</td><td>${r.variance_lines}</td><td>${r.unexpected_lines}</td><td>${r.uncounted_lines}</td><td>${(+r.wms_qty).toLocaleString()}</td><td>${(+r.counted_qty).toLocaleString()}</td><td>${recountBtn(r.location,r.location_status)}</td></tr>`);});
+  document.getElementById('dash-note').textContent=t('dash.locsShown',{n:(data||[]).length,rc:mode==='recount'?t('dash.locsRecount'):mode==='queue'?t('dash.locsRecountQueue'):'',cap:(data||[]).length>=500?t('dash.locsCap'):'',id:session.count_id});
+}
+/* Admin Recount = a REQUEST: the location moves to recount_requested and into the Recount
+   counters' queue. Nothing is deleted — the current count stays visible (status "recount")
+   until a Recount counter engages the location, which starts a new pass. */
+async function recount(loc){
+  if(!session||!loc)return;
+  const reason=prompt(t('confirm.recount',{loc,id:session.count_id}),'');
+  if(reason===null)return;
+  const {data,error}=await sb.rpc('request_recount',{p_session:session.id,p_location:loc,p_by:counter()||'admin',p_reason:reason.trim()||null});
+  if(error){flash('bad',t('err.recount',{msg:error.message}));return;}
+  if(!data.ok){flash('warn',t(data.reason==='not_complete'?'msg.recountNotComplete':'err.recount',{loc,msg:data.reason}));return;}
+  flash(data.already?'warn':'ok',t(data.already?'msg.recountAlready':'msg.recountIssued',{loc,n:data.recount_count}));
+  if(flow.blockedLoc===loc)resetFlow();
+  if(!document.getElementById('view-dash').classList.contains('hidden'))refreshDash();
+}
+async function cancelRecount(loc){
+  if(!session||!loc)return;
+  if(!confirm(t('confirm.cancelRecount',{loc})))return;
+  const {data,error}=await sb.rpc('cancel_recount',{p_session:session.id,p_location:loc});
+  if(error||!data.ok){flash('bad',t('err.cancelRecount',{msg:error?error.message:data.reason}));return;}
+  flash('ok',t('msg.recountCancelled',{loc}));refreshDash();
+}
+function tile(cls,n,l,sub){return `<div class="tile ${cls}"><div class="n">${n}</div><div class="l">${l}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`}
+
+/* ---------- exports ---------- */
+async function fetchAll(table,sel){const out=[];let from=0;const step=1000;while(true){const {data,error}=await sb.from(table).select(sel).eq('session_id',session.id).range(from,from+step-1);if(error){flash('bad',t('err.export',{msg:error.message}));break;}out.push(...(data||[]));if(!data||data.length<step)break;from+=step;}return out;}
+function csvEsc(v){v=(v==null?'':String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function toCSV(rows,cols){return cols.join(',')+'\n'+rows.map(r=>cols.map(c=>csvEsc(r[c])).join(',')).join('\n');}
+function dlCSV(name,text){const b=new Blob([text],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+async function exportRecon(){if(!session)return;flash('ok',t('msg.prepRecon'));const cols=['status','location','pallet_tag','case_number','sku','product_name','upc','wms_qty','counted_qty','delta'];const rows=await fetchAll('v_reconciliation',cols.join(','));dlCSV(session.count_id+'_reconciliation.csv',toCSV(rows,cols));flash('ok',t('msg.exportedRecon',{n:rows.length}));}
+async function exportScans(){if(!session)return;flash('ok',t('msg.prepScans'));const cols=['location','pallet_tag','case_number','sku','quantity','counter','device_id','created_at'];const rows=await fetchAll('scanned_records',cols.join(','));dlCSV(session.count_id+'_scans.csv',toCSV(rows,cols));flash('ok',t('msg.exportedScans',{n:rows.length}));}
+
+/* ---------- wire up ---------- */
+function bind(id,fn){const el=document.getElementById(id);el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fn(el.value);}});}
+bind('in-location',onLocation);bind('in-pallet',onPallet);bind('in-pallet-sku',()=>commitClosedPallet());
+bind('in-open-pallet-case',onOpenPalletCase);bind('in-case',onCase);bind('in-case-sku',()=>commitClosedCase());bind('in-each',onEach);bind('ec-qty',()=>submitEnterCount());bind('in-u-pallet',onUnxPallet);bind('in-u-case',onUnxCase);bind('in-u-sku',onUnxSku);bind('in-counter',()=>saveCounterInline());
+document.getElementById('nc-scope').addEventListener('change',e=>{document.getElementById('nc-scopeval').classList.toggle('hidden',e.target.value==='whole_customer');});
+bind('gate-pin',()=>gateSubmit());
+
+document.getElementById('build-date').textContent=new Date().toISOString().slice(0,10);
+applyTheme(localStorage.getItem('pc_theme')||'dark');
+applyLang(localStorage.getItem('pc_lang')||'en');   // persisted like the theme; English until the user switches
+(async()=>{
+  try{
+    await requireGate();                       // master PIN (admin or scanner) before anything loads
+    if(SCANNER){ if(await restoreSession()) await checkRegistered(); setConn('connected'); updateBadges(); setView('scan'); return; }
+    await loadRefLists(); await nextCountNum(); previewName(); await loadTower(); await restoreSession(); setConn('connected');
+  }
+  catch(e){ setConn('offline'); flash('bad',t('err.conn',{msg:e.message})); }
+  updateBadges();
+})();
+</script>
+</body>
+</html>
